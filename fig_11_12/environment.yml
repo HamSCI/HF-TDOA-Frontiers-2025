@@ -13,3 +13,4 @@ dependencies:
   - geographiclib
   - ipykernel
   - jupyterlab
+  - pydub
