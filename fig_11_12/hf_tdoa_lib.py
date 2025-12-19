@@ -513,7 +513,7 @@ def title_from_pfx(ax, pfx, date=None):
     rx_call = pfx[4]
     rx_grid = pfx[5]
 
-    range_km = float(pfx[6].replace('KM', ''))
+    range_km = float(pfx[6].lower().replace('km', ''))
     band     = int(pfx[7].replace('m', ''))
 
     band_dct = {}
