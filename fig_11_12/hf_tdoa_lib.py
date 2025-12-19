@@ -597,8 +597,42 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3)):
     plt.close(fig)
 
 
-def plot_hmf2(chirps, tdoa_dct, ionosonde_times, ionosonde_heights,
-              ionosonde_times_hme=None, ionosonde_heights_hme=None, ylim=(75,450)):
+def load_ionosonde_data(csv_path):
+    """
+    Loads ionosonde data from a CSV file.
+
+    Arguments:
+    csv_path : str
+        Path to the ionosonde CSV file. Expected columns: UTC, hmE, hmF2.
+
+    Returns:
+    ionosonde_df : pd.DataFrame
+        DataFrame containing ionosonde data with datetime index.
+    """
+    ionosonde_df = pd.read_csv(csv_path, parse_dates=['UTC'])
+    return ionosonde_df
+
+
+def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'):
+    """
+    Overlays Austin, TX ionosonde data (hmF2 and hmE) on an existing axes.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    csv_path : str, optional
+        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
+    """
+    ionosonde_df = load_ionosonde_data(csv_path)
+
+    ax.plot(ionosonde_df['UTC'], ionosonde_df['hmF2'], color='purple',
+            label="Austin Ionosonde hmF2", linewidth=2)
+
+    ax.plot(ionosonde_df['UTC'], ionosonde_df['hmE'], color='brown',
+            label="Austin Ionosonde hmE", linewidth=2)
+
+
+def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv', ylim=(75,450)):
     """
     Plots layer heights derived from TDOAs and compares with ionosonde measurements.
 
@@ -607,14 +641,8 @@ def plot_hmf2(chirps, tdoa_dct, ionosonde_times, ionosonde_heights,
         DataFrame containing chirp data and TDOA measurements.
     tdoa_dct : dict
         Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
-    ionosonde_times : list
-        List of datetime objects for ionosonde hmF2 measurements.
-    ionosonde_heights : list
-        List of hmF2 layer heights from ionosonde.
-    ionosonde_times_hme : list, optional
-        List of datetime objects for ionosonde hmE measurements.
-    ionosonde_heights_hme : list, optional
-        List of hmE layer heights from ionosonde.
+    csv_path : str, optional
+        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
     ylim : tuple, optional
         Y-axis limits for the plot. Default is (75, 450).
     """
@@ -643,12 +671,7 @@ def plot_hmf2(chirps, tdoa_dct, ionosonde_times, ionosonde_heights,
     ax.set_ylabel('Layer Height [km]')
     ax.set_xlabel('Time UTC')
 
-    ax.plot(ionosonde_times, ionosonde_heights, color='purple',
-            label="Austin Ionosonde hmf2", linewidth=2)
-
-    if ionosonde_times_hme is not None and ionosonde_heights_hme is not None:
-        ax.plot(ionosonde_times_hme, ionosonde_heights_hme, color='brown',
-                label="Austin Ionosonde hmE", linewidth=2)
+    overlay_austin_ionosonde(ax, csv_path)
 
     ax.legend()
     fig.autofmt_xdate()
