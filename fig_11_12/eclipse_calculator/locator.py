@@ -1,6 +1,7 @@
 import string
 import numpy as np
 import pandas as pd
+from . import geopack
 
 # Create string lookup lists for each of the codes.
 alpha_upper = np.char.array([x for x in string.ascii_uppercase])
@@ -297,3 +298,40 @@ def grid_latlons(precision=4,position='center'):
     gs_grid     = gridsquare_grid(precision=precision)
     lat_lons    = gridsquare2latlon(gs_grid,position=position)
     return lat_lons
+
+def gridsquare_midpoint(gridsquare1, gridsquare2):
+    """
+    Calculate the great circle midpoint (lat, lon) given two gridsquares.
+
+    Parameters
+    ----------
+    gridsquare1 : str
+        First gridsquare
+    gridsquare2 : str
+        Second gridsquare
+
+    Returns
+    -------
+    tuple
+        (midpoint_lat, midpoint_lon) in degrees
+    """
+    lat1, lon1 = gridsquare2latlon(gridsquare1, position='center')
+    lat2, lon2 = gridsquare2latlon(gridsquare2, position='center')
+
+    # Handle scalar or array returns
+    if np.isscalar(lat1):
+        lat1, lon1 = float(lat1), float(lon1)
+        lat2, lon2 = float(lat2), float(lon2)
+    else:
+        lat1, lon1 = float(lat1.item()), float(lon1.item())
+        lat2, lon2 = float(lat2.item()), float(lon2.item())
+
+    # Use geopack's great circle midpoint calculation
+    midpoint_lat, midpoint_lon = geopack.midpoint(lat1, lon1, lat2, lon2)
+
+    # Handle numpy array returns from geopack.midpoint
+    if not np.isscalar(midpoint_lat):
+        midpoint_lat = float(midpoint_lat.item())
+        midpoint_lon = float(midpoint_lon.item())
+
+    return (midpoint_lat, midpoint_lon)
