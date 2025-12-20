@@ -82,6 +82,63 @@ class PathInfo:
         }
         return band_dct.get(self.band, f'{self.band} m')
 
+    def get_tx_latlon(self):
+        """
+        Get transmitter coordinates from grid square.
+
+        Returns:
+        --------
+        tuple
+            (latitude, longitude) in degrees
+        """
+        from .eclipse_calculator import locator
+        lat, lon = locator.gridsquare2latlon(self.tx_grid, position='center')
+        if not np.isscalar(lat):
+            lat, lon = float(lat.item()), float(lon.item())
+        return (lat, lon)
+
+    def get_rx_latlon(self):
+        """
+        Get receiver coordinates from grid square.
+
+        Returns:
+        --------
+        tuple
+            (latitude, longitude) in degrees
+        """
+        from .eclipse_calculator import locator
+        lat, lon = locator.gridsquare2latlon(self.rx_grid, position='center')
+        if not np.isscalar(lat):
+            lat, lon = float(lat.item()), float(lon.item())
+        return (lat, lon)
+
+    def get_midpoint(self):
+        """
+        Calculate the great circle midpoint between TX and RX stations.
+
+        Returns:
+        --------
+        tuple
+            (midpoint_lat, midpoint_lon) in degrees
+        """
+        from .eclipse_calculator import locator
+        return locator.gridsquare_midpoint(self.tx_grid, self.rx_grid)
+
+    def get_path_azimuth(self):
+        """
+        Calculate the azimuth from TX to RX along the great circle path.
+
+        Returns:
+        --------
+        float
+            Azimuth in degrees (0-360, where 0 is North)
+        """
+        from .eclipse_calculator import geopack
+        tx_lat, tx_lon = self.get_tx_latlon()
+        rx_lat, rx_lon = self.get_rx_latlon()
+        azm = geopack.greatCircleAzm(tx_lat, tx_lon, rx_lat, rx_lon)
+        return azm
+
     def __repr__(self):
         """String representation of PathInfo."""
         return (f"PathInfo(TX: {self.tx_call} ({self.tx_grid}), "
@@ -228,9 +285,10 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
         Path to the WAV file containing the chirp template.
     sweep_rate : float
         Sweep rate in Hz/ms. Needed for TDOA calculations.
-    pfx : str, optional
-        String that identifies the transmit and receive station. If None, the pfx will
-        be derived from the first name in the wavlist. This is stored as chirps.attrs['pfx'].
+    pfx : str or PathInfo, optional
+        String or PathInfo object that identifies the transmit and receive station.
+        If None, the pfx will be derived from the first name in the wavlist.
+        A PathInfo object is stored as chirps.attrs['path_info'].
     plot_correlation : bool, optional
         If True, plots the correlation results for each WAV file. Default is False.
 
@@ -242,9 +300,16 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
             'x'   : indices of chirp starts
             'y'   : cross-correlation coefficients at chirp starts
             'file': path to the source WAV file
+        The DataFrame also has attrs['path_info'] containing a PathInfo object.
     """
     if pfx is None:
         pfx = os.path.basename(wavlist[0])[17:-4]
+
+    # Convert pfx to PathInfo object if it's a string
+    if isinstance(pfx, str):
+        path_info = PathInfo(pfx)
+    else:
+        path_info = pfx
 
     sample_env, sample_fs = load_wav(template)
     template = sample_env['x']
@@ -295,7 +360,8 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
             print(file, end = "\r")
 
     chirps = pd.DataFrame({'utc':utcs, 'data':wav_data, 'x':chirps_x, 'y':chirps_y, 'file':file})
-    chirps.attrs['pfx'] = pfx
+    chirps.attrs['path_info'] = path_info
+    chirps.attrs['pfx'] = path_info.pfx  # Keep for backward compatibility
     chirps.attrs['sweep_rate'] = sweep_rate
     return chirps
 
@@ -648,8 +714,11 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3)):
     ax.set_xlabel('Time UTC')
     fig.autofmt_xdate()
 
-    pfx = chirps.attrs.get('pfx', '')
-    title_from_pfx(ax, pfx, times[0])
+    # Use path_info if available, otherwise fall back to pfx string for backward compatibility
+    path_info = chirps.attrs.get('path_info', None)
+    if path_info is None:
+        path_info = chirps.attrs.get('pfx', '')
+    title_from_pfx(ax, path_info, times[0])
 
     plt.tight_layout()
     plt.show()
@@ -840,8 +909,11 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
     ax.legend()
     fig.autofmt_xdate()
 
-    pfx = chirps.attrs.get('pfx', '')
-    title_from_pfx(ax, pfx, times[0])
+    # Use path_info if available, otherwise fall back to pfx string for backward compatibility
+    path_info = chirps.attrs.get('path_info', None)
+    if path_info is None:
+        path_info = chirps.attrs.get('pfx', '')
+    title_from_pfx(ax, path_info, times[0])
 
     plt.tight_layout()
     plt.show()
