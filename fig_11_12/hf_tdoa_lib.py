@@ -22,7 +22,7 @@ class PathInfo:
     Parses and stores transmitter/receiver path information from a prefix string.
 
     The prefix string is expected to follow the format:
-    <anything>-TX_CALL-TX_GRID-<anything>-RX_CALL-RX_GRID-<RANGE>km-<BAND>m
+    <anything>-TX_CALL-TX_GRID-<anything>-RX_CALL-RX_GRID-<BAND>m
 
     Attributes:
     -----------
@@ -36,8 +36,6 @@ class PathInfo:
         Receiver callsign
     rx_grid : str
         Receiver grid square
-    range_km : float
-        Ground range in kilometers
     band : int
         Band in meters (e.g., 20, 40, 80)
     band_str : str
@@ -65,8 +63,7 @@ class PathInfo:
         self.rx_call = pfx_parts[4]
         self.rx_grid = pfx_parts[5]
 
-        self.range_km = float(pfx_parts[6].lower().replace('km', ''))
-        self.band = int(pfx_parts[7].replace('m', ''))
+        self.band = int(pfx_parts[6].replace('m', ''))
 
         self.band_str = self._get_band_str()
 
@@ -143,19 +140,42 @@ class PathInfo:
             Azimuth in degrees (0-360, where 0 is North)
         """
         try:
-            from .eclipse_calculator import geopack
+            from .eclipse_calculator.geopack import greatCircleAzm
         except ImportError:
-            from eclipse_calculator import geopack
+            from eclipse_calculator.geopack import greatCircleAzm
         tx_lat, tx_lon = self.get_tx_latlon()
         rx_lat, rx_lon = self.get_rx_latlon()
-        azm = geopack.greatCircleAzm(tx_lat, tx_lon, rx_lat, rx_lon)
+        azm = greatCircleAzm(tx_lat, tx_lon, rx_lat, rx_lon)
         return azm
+
+    def get_range_km(self):
+        """
+        Calculate the great circle distance between TX and RX stations.
+
+        Returns:
+        --------
+        float
+            Distance in kilometers
+        """
+        try:
+            from .eclipse_calculator.geopack import greatCircleDist
+        except ImportError:
+            from eclipse_calculator.geopack import greatCircleDist
+        tx_lat, tx_lon = self.get_tx_latlon()
+        rx_lat, rx_lon = self.get_rx_latlon()
+        # greatCircleDist returns distance in radians
+        dist_rad = greatCircleDist(tx_lat, tx_lon, rx_lat, rx_lon)
+        # Convert to kilometers using Earth radius
+        Re = 6371.0  # Earth radius in km
+        dist_km = dist_rad * Re
+        return dist_km
 
     def __repr__(self):
         """String representation of PathInfo."""
+        range_km = self.get_range_km()
         return (f"PathInfo(TX: {self.tx_call} ({self.tx_grid}), "
                 f"RX: {self.rx_call} ({self.rx_grid}), "
-                f"Range: {self.range_km} km, Band: {self.band_str})")
+                f"Range: {range_km:.1f} km, Band: {self.band_str})")
 
 
 def setup_plotting_style():
@@ -665,7 +685,8 @@ def title_from_pfx(ax, pfx, date=None):
     title = f'TX: {path_info.tx_call} ({path_info.tx_grid})\nRX: {path_info.rx_call} ({path_info.rx_grid})'
     ax.set_title(title, loc='left')
 
-    title = f'Ground Range: {path_info.range_km} km\nBand: {path_info.band_str}'
+    range_km = path_info.get_range_km()
+    title = f'Ground Range: {range_km:.1f} km\nBand: {path_info.band_str}'
     ax.set_title(title, loc='right')
 
     if date is not None:
