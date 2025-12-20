@@ -632,7 +632,9 @@ def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionoso
             label="Austin Ionosonde hmE", linewidth=2)
 
 
-def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv', ylim=(75,450)):
+def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv', ylim=(75,450),
+              solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
+              overlay_solar_elevation=False, overlay_eclipse=False):
     """
     Plots layer heights derived from TDOAs and compares with ionosonde measurements.
 
@@ -645,6 +647,18 @@ def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionoson
         Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
     ylim : tuple, optional
         Y-axis limits for the plot. Default is (75, 450).
+    solar_lat : float, optional
+        Latitude for solar calculations (degrees, +N/-S). Required if overlay_solar_elevation or overlay_eclipse is True.
+    solar_lon : float, optional
+        Longitude for solar calculations (degrees, +E/-W). Required if overlay_solar_elevation or overlay_eclipse is True.
+    solar_start : datetime.datetime, optional
+        Start time for solar calculations. If None, derived from plot x-axis limits.
+    solar_end : datetime.datetime, optional
+        End time for solar calculations. If None, derived from plot x-axis limits.
+    overlay_solar_elevation : bool, optional
+        If True, overlay solar elevation angle. Default is False.
+    overlay_eclipse : bool, optional
+        If True, overlay eclipse obscuration. Default is False.
     """
     times = chirps['utc']
 
@@ -672,6 +686,44 @@ def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionoson
     ax.set_xlabel('Time UTC')
 
     overlay_austin_ionosonde(ax, csv_path)
+
+    # Add solar elevation and/or eclipse obscuration overlays if requested
+    if overlay_solar_elevation or overlay_eclipse:
+        # Check that required parameters are provided
+        if solar_lat is None or solar_lon is None:
+            print('WARNING: solar_lat and solar_lon must be provided for solar overlays.')
+        else:
+            # Import here to avoid circular dependencies
+            try:
+                import eclipse_calculator
+
+                # Set default times based on x-axis limits if not provided
+                if solar_start is None or solar_end is None:
+                    xlim = ax.get_xlim()
+                    # Convert matplotlib date numbers to datetime objects
+                    if solar_start is None:
+                        solar_start = mdates.num2date(xlim[0]).replace(tzinfo=None)
+                    if solar_end is None:
+                        solar_end = mdates.num2date(xlim[1]).replace(tzinfo=None)
+
+                # Create solarTimeseries object
+                solar_ts = eclipse_calculator.solarContext.solarTimeseries(
+                    sTime=solar_start,
+                    eTime=solar_end,
+                    lat=solar_lat,
+                    lon=solar_lon
+                )
+
+                # Overlay solar elevation if requested
+                if overlay_solar_elevation:
+                    solar_ts.overlaySolarElevation(ax)
+
+                # Overlay eclipse obscuration if requested
+                if overlay_eclipse:
+                    solar_ts.overlayEclipse(ax)
+
+            except ImportError:
+                print('WARNING: eclipse_calculator module not found. Cannot overlay solar data.')
 
     ax.legend()
     fig.autofmt_xdate()
