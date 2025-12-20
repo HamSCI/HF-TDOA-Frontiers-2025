@@ -17,6 +17,78 @@ from scipy.io import wavfile
 import pandas as pd
 
 
+class PathInfo:
+    """
+    Parses and stores transmitter/receiver path information from a prefix string.
+
+    The prefix string is expected to follow the format:
+    <anything>-TX_CALL-TX_GRID-<anything>-RX_CALL-RX_GRID-<RANGE>km-<BAND>m
+
+    Attributes:
+    -----------
+    pfx : str
+        Original prefix string
+    tx_call : str
+        Transmitter callsign
+    tx_grid : str
+        Transmitter grid square
+    rx_call : str
+        Receiver callsign
+    rx_grid : str
+        Receiver grid square
+    range_km : float
+        Ground range in kilometers
+    band : int
+        Band in meters (e.g., 20, 40, 80)
+    band_str : str
+        Band frequency string (e.g., '14 MHz', '7 MHz')
+    """
+
+    def __init__(self, pfx):
+        """
+        Initialize PathInfo by parsing the prefix string.
+
+        Parameters:
+        -----------
+        pfx : str
+            Prefix string containing TX/RX station information
+        """
+        self.pfx = pfx
+        self._parse_prefix()
+
+    def _parse_prefix(self):
+        """Parse the prefix string and extract TX/RX information."""
+        pfx_parts = self.pfx.replace('_', '-').split('-')
+
+        self.tx_call = pfx_parts[1]
+        self.tx_grid = pfx_parts[2]
+        self.rx_call = pfx_parts[4]
+        self.rx_grid = pfx_parts[5]
+
+        self.range_km = float(pfx_parts[6].lower().replace('km', ''))
+        self.band = int(pfx_parts[7].replace('m', ''))
+
+        self.band_str = self._get_band_str()
+
+    def _get_band_str(self):
+        """Convert band (in meters) to frequency string."""
+        band_dct = {
+            80: '3.5 MHz',
+            60: '5 MHz',
+            40: '7 MHz',
+            20: '14 MHz',
+            15: '21 MHz',
+            10: '28 MHz'
+        }
+        return band_dct.get(self.band, f'{self.band} m')
+
+    def __repr__(self):
+        """String representation of PathInfo."""
+        return (f"PathInfo(TX: {self.tx_call} ({self.tx_grid}), "
+                f"RX: {self.rx_call} ({self.rx_grid}), "
+                f"Range: {self.range_km} km, Band: {self.band_str})")
+
+
 def setup_plotting_style():
     """Sets default style and font parameters for plots."""
     mpl.rcParams['font.size']          = 16
@@ -501,34 +573,21 @@ def title_from_pfx(ax, pfx, date=None):
     Arguments:
     ax : matplotlib.axes.Axes
         The axes object to add the title to.
-    pfx : str
-        Prefix string containing TX/RX station information.
+    pfx : str or PathInfo
+        Prefix string containing TX/RX station information, or a PathInfo object.
     date : datetime.datetime, optional
         Date to display in the center title.
     """
-    pfx = pfx.replace('_', '-').split('-')
-    tx_call = pfx[1]
-    tx_grid = pfx[2]
+    # Accept either a string or a PathInfo object
+    if isinstance(pfx, str):
+        path_info = PathInfo(pfx)
+    else:
+        path_info = pfx
 
-    rx_call = pfx[4]
-    rx_grid = pfx[5]
-
-    range_km = float(pfx[6].lower().replace('km', ''))
-    band     = int(pfx[7].replace('m', ''))
-
-    band_dct = {}
-    band_dct[80]  = '3.5 MHz'
-    band_dct[60]  = '5 MHz'
-    band_dct[40]  = '7 MHz'
-    band_dct[20]  = '14 MHz'
-    band_dct[15]  = '21 MHz'
-    band_dct[10]  = '28 MHz'
-    band_str = band_dct.get(band, f'{band} m')
-
-    title = f'TX: {tx_call} ({tx_grid})\nRX: {rx_call} ({rx_grid})'
+    title = f'TX: {path_info.tx_call} ({path_info.tx_grid})\nRX: {path_info.rx_call} ({path_info.rx_grid})'
     ax.set_title(title, loc='left')
 
-    title = f'Ground Range: {range_km} km\nBand: {band_str}'
+    title = f'Ground Range: {path_info.range_km} km\nBand: {path_info.band_str}'
     ax.set_title(title, loc='right')
 
     if date is not None:
