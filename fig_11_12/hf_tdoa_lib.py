@@ -686,7 +686,7 @@ def title_from_pfx(ax, pfx, date=None):
     ax.set_title(title, loc='left')
 
     range_km = path_info.get_range_km()
-    title = f'Ground Range: {range_km:.1f} km\nBand: {path_info.band_str}'
+    title = f'Ground Range: {range_km:.0f} km\nBand: {path_info.band_str}'
     ax.set_title(title, loc='right')
 
     if date is not None:
