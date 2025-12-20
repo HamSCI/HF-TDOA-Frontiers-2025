@@ -15,6 +15,7 @@ import datetime
 from scipy import signal
 from scipy.io import wavfile
 import pandas as pd
+from tqdm import tqdm
 
 
 # Mode-specific configuration parameters
@@ -870,6 +871,11 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
 
     TDOA [ms] = (Beat Frequency [Hz]) / (Sweep Rate [Hz/ms])
 
+    The function displays detailed processing information including:
+    - Mode being processed and all parameters
+    - Progress bar showing file-by-file processing
+    - Mean TDOA value for each file being processed
+
     Arguments:
     wav_data : pd.DataFrame
         DataFrame containing WAV file data and chirp start locations.
@@ -922,9 +928,27 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
         set_name = mode_string
     sweep_rate = wav_data.attrs['sweep_rate'] # Sweep rate in Hz/ms
 
+    # Print processing information
+    print(f"\n{'='*70}")
+    print(f"Processing Mode: {mode_string}")
+    print(f"{'='*70}")
+    print(f"  Filter Limits:  {filter_limts[0]:.1f} - {filter_limts[1]:.1f} Hz")
+    print(f"  Search Window:  {search_limits[0]:.2f} to {search_limits[1]:.2f} s offset")
+    print(f"  Freq Range:     {search_limits[2]:.1f} - {search_limits[3]:.1f} Hz")
+    print(f"  Set Name:       {set_name}")
+    print(f"  Sweep Rate:     {sweep_rate} Hz/ms")
+    print(f"  Files to Process: {len(wav_data)}")
+    print(f"{'='*70}\n")
+
     all_beats  = []
     mean_beats = []
-    for file_num, row in wav_data.iterrows():
+
+    # Use tqdm progress bar for file processing
+    pbar = tqdm(wav_data.iterrows(), total=len(wav_data),
+                desc=f"Finding TDOAs ({mode_string})",
+                unit="file", disable=only_one)
+
+    for file_num, row in pbar:
         maxes = []
         wav_df = row['data']
         fpath  = row['file']
@@ -947,7 +971,6 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
                            env=wav_env['x'], tvec=wav_env.index, X_psd=X_psd, f=freq)
 
             maxes.append(maximum_x)
-            print(fpath, end = "\r")
             if only_one:
                 break
 
@@ -962,9 +985,16 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
             else:
                 mean_beats.append(np.nan)
 
+            # Update progress bar with current file's mean TDOA
+            if len(beat_arr) > 0 and not np.all(np.isnan(beat_arr)):
+                pbar.set_postfix({'Mean TDOA': f'{np.nanmean(beat_arr):.2f} ms'})
+
     if not only_one:
+        pbar.close()
         wav_data[set_name]           = all_beats
         wav_data[f'{set_name}_mean'] = mean_beats
+        print(f"✓ Completed processing {mode_string}: {len(wav_data)} files processed\n")
+
     return wav_data
 
 
