@@ -902,7 +902,11 @@ def find_TDOAs(wav_data, search_limits, filter_limts,
             break
         else:
             all_beats.append(beat_arr)
-            mean_beats.append(np.nanmean(beat_arr))
+            # Handle case where beat_arr contains only NaN values
+            if len(beat_arr) > 0 and not np.all(np.isnan(beat_arr)):
+                mean_beats.append(np.nanmean(beat_arr))
+            else:
+                mean_beats.append(np.nan)
 
     if not only_one:
         wav_data[set_name]           = all_beats
@@ -1155,7 +1159,7 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         else:
             # Import here to avoid circular dependencies
             try:
-                import eclipse_calculator
+                from eclipse_calculator import solarContext
 
                 # Set default times based on x-axis limits if not provided
                 if solar_start is None or solar_end is None:
@@ -1167,7 +1171,7 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
                         solar_end = mdates.num2date(xlim[1]).replace(tzinfo=None)
 
                 # Create solarTimeseries object
-                solar_ts = eclipse_calculator.solarContext.solarTimeseries(
+                solar_ts = solarContext.solarTimeseries(
                     sTime=solar_start,
                     eTime=solar_end,
                     lat=solar_lat,
@@ -1182,8 +1186,8 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
                 if overlay_eclipse:
                     solar_ts.overlayEclipse(ax)
 
-            except ImportError:
-                print('WARNING: eclipse_calculator module not found. Cannot overlay solar data.')
+            except (ImportError, AttributeError) as e:
+                print(f'WARNING: Cannot overlay solar data. Error: {e}')
 
     ax.legend()
     fig.autofmt_xdate()
