@@ -40,6 +40,10 @@ class PathInfo:
         Band in meters (e.g., 20, 40, 80)
     band_str : str
         Band frequency string (e.g., '14 MHz', '7 MHz')
+    Re : float
+        Earth radius in km (6378.0)
+    E_layer_height : float
+        Fixed E layer height in km (105.0)
     """
 
     def __init__(self, pfx):
@@ -52,6 +56,8 @@ class PathInfo:
             Prefix string containing TX/RX station information
         """
         self.pfx = pfx
+        self.Re = 6378.0  # Earth radius in km
+        self.E_layer_height = 105.0  # Fixed E layer height in km
         self._parse_prefix()
 
     def _parse_prefix(self):
@@ -79,6 +85,69 @@ class PathInfo:
         }
         return band_dct.get(self.band, f'{self.band} m')
 
+    def _import_locator(self):
+        """
+        Import locator module directly to avoid astropy dependency issues.
+
+        Locator imports geopack, so we need to load geopack first and inject it
+        into the locator module's namespace to handle the relative import.
+
+        Returns:
+        --------
+        module
+            The locator module
+        """
+        import importlib.util
+        import os
+        import sys
+        import types
+
+        # Try to find locator.py in eclipse_calculator directory
+        try:
+            # Get the directory of this file
+            this_dir = os.path.dirname(os.path.abspath(__file__))
+            locator_path = os.path.join(this_dir, 'eclipse_calculator', 'locator.py')
+            geopack_path = os.path.join(this_dir, 'eclipse_calculator', 'geopack.py')
+
+            if not os.path.exists(locator_path):
+                # Fallback: try relative import
+                try:
+                    from .eclipse_calculator import locator
+                    return locator
+                except ImportError:
+                    from eclipse_calculator import locator
+                    return locator
+
+            # First load geopack into a fake package structure
+            geopack_spec = importlib.util.spec_from_file_location("eclipse_calculator.geopack", geopack_path)
+            geopack = importlib.util.module_from_spec(geopack_spec)
+
+            # Create a fake eclipse_calculator package if it doesn't exist
+            if 'eclipse_calculator' not in sys.modules:
+                eclipse_calculator_pkg = types.ModuleType('eclipse_calculator')
+                eclipse_calculator_pkg.__path__ = [os.path.join(this_dir, 'eclipse_calculator')]
+                eclipse_calculator_pkg.__package__ = 'eclipse_calculator'
+                sys.modules['eclipse_calculator'] = eclipse_calculator_pkg
+
+            # Add geopack to sys.modules with package name
+            sys.modules['eclipse_calculator.geopack'] = geopack
+            geopack_spec.loader.exec_module(geopack)
+
+            # Now load locator with package context - it can now do "from . import geopack"
+            spec = importlib.util.spec_from_file_location("eclipse_calculator.locator", locator_path)
+            locator = importlib.util.module_from_spec(spec)
+            sys.modules['eclipse_calculator.locator'] = locator
+            spec.loader.exec_module(locator)
+            return locator
+        except Exception:
+            # Final fallback: try regular import
+            try:
+                from .eclipse_calculator import locator
+                return locator
+            except ImportError:
+                from eclipse_calculator import locator
+                return locator
+
     def get_tx_latlon(self):
         """
         Get transmitter coordinates from grid square.
@@ -88,10 +157,7 @@ class PathInfo:
         tuple
             (latitude, longitude) in degrees
         """
-        try:
-            from .eclipse_calculator import locator
-        except ImportError:
-            from eclipse_calculator import locator
+        locator = self._import_locator()
         lat, lon = locator.gridsquare2latlon(self.tx_grid, position='center')
         if not np.isscalar(lat):
             lat, lon = float(lat.item()), float(lon.item())
@@ -106,10 +172,7 @@ class PathInfo:
         tuple
             (latitude, longitude) in degrees
         """
-        try:
-            from .eclipse_calculator import locator
-        except ImportError:
-            from eclipse_calculator import locator
+        locator = self._import_locator()
         lat, lon = locator.gridsquare2latlon(self.rx_grid, position='center')
         if not np.isscalar(lat):
             lat, lon = float(lat.item()), float(lon.item())
@@ -124,11 +187,49 @@ class PathInfo:
         tuple
             (midpoint_lat, midpoint_lon) in degrees
         """
-        try:
-            from .eclipse_calculator import locator
-        except ImportError:
-            from eclipse_calculator import locator
+        locator = self._import_locator()
         return locator.gridsquare_midpoint(self.tx_grid, self.rx_grid)
+
+    def _import_geopack(self):
+        """
+        Import geopack module directly to avoid astropy dependency issues.
+
+        Returns:
+        --------
+        module
+            The geopack module
+        """
+        import importlib.util
+        import os
+
+        # Try to find geopack.py in eclipse_calculator directory
+        try:
+            # Get the directory of this file
+            this_dir = os.path.dirname(os.path.abspath(__file__))
+            geopack_path = os.path.join(this_dir, 'eclipse_calculator', 'geopack.py')
+
+            if not os.path.exists(geopack_path):
+                # Fallback: try relative import
+                try:
+                    from .eclipse_calculator import geopack
+                    return geopack
+                except ImportError:
+                    from eclipse_calculator import geopack
+                    return geopack
+
+            # Load module directly to avoid __init__.py astropy import
+            spec = importlib.util.spec_from_file_location("geopack", geopack_path)
+            geopack = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(geopack)
+            return geopack
+        except Exception:
+            # Final fallback: try regular import
+            try:
+                from .eclipse_calculator import geopack
+                return geopack
+            except ImportError:
+                from eclipse_calculator import geopack
+                return geopack
 
     def get_path_azimuth(self):
         """
@@ -139,13 +240,10 @@ class PathInfo:
         float
             Azimuth in degrees (0-360, where 0 is North)
         """
-        try:
-            from .eclipse_calculator.geopack import greatCircleAzm
-        except ImportError:
-            from eclipse_calculator.geopack import greatCircleAzm
+        geopack = self._import_geopack()
         tx_lat, tx_lon = self.get_tx_latlon()
         rx_lat, rx_lon = self.get_rx_latlon()
-        azm = greatCircleAzm(tx_lat, tx_lon, rx_lat, rx_lon)
+        azm = geopack.greatCircleAzm(tx_lat, tx_lon, rx_lat, rx_lon)
         return azm
 
     def get_range_km(self):
@@ -157,18 +255,166 @@ class PathInfo:
         float
             Distance in kilometers
         """
-        try:
-            from .eclipse_calculator.geopack import greatCircleDist
-        except ImportError:
-            from eclipse_calculator.geopack import greatCircleDist
+        geopack = self._import_geopack()
         tx_lat, tx_lon = self.get_tx_latlon()
         rx_lat, rx_lon = self.get_rx_latlon()
         # greatCircleDist returns distance in radians
-        dist_rad = greatCircleDist(tx_lat, tx_lon, rx_lat, rx_lon)
+        dist_rad = geopack.greatCircleDist(tx_lat, tx_lon, rx_lat, rx_lon)
         # Convert to kilometers using Earth radius
         Re = 6371.0  # Earth radius in km
         dist_km = dist_rad * Re
         return dist_km
+
+    def calculate_path_length(self, n_hops, layer_height):
+        """
+        Calculate the total path length for n-hop propagation at a given layer height.
+
+        Uses the spherical Earth virtual height model from Section 2.4 of the manuscript.
+        Equations 4-7:
+        - P1 = 2√[2r(r + h)(1 - cos(D/2r)) + h²]
+        - P2 = 4√[2r(r + h)(1 - cos(D/4r)) + h²]
+        - P3 = 6√[2r(r + h)(1 - cos(D/6r)) + h²]
+        - P4 = 8√[2r(r + h)(1 - cos(D/8r)) + h²]
+
+        Parameters:
+        -----------
+        n_hops : int
+            Number of hops (1, 2, 3, or 4)
+        layer_height : float
+            Virtual layer height in km
+
+        Returns:
+        --------
+        float
+            Total path length in km
+        """
+        D = self.get_range_km()  # Ground distance in km
+        r = self.Re
+        h = layer_height
+
+        # Calculate path length using spherical Earth virtual height formula
+        path_length = (2 * n_hops) * np.sqrt(
+            2 * r * (r + h) * (1 - np.cos(D / (2 * n_hops * r))) + h**2
+        )
+
+        return path_length
+
+    def calculate_TOF(self, n_hops, layer_height):
+        """
+        Calculate Time of Flight for n-hop propagation at a given layer height.
+
+        Parameters:
+        -----------
+        n_hops : int
+            Number of hops (1, 2, 3, or 4)
+        layer_height : float
+            Virtual layer height in km
+
+        Returns:
+        --------
+        float
+            Time of Flight in milliseconds
+        """
+        c = 300000.0  # Speed of light in km/s
+        path_length = self.calculate_path_length(n_hops, layer_height)
+        tof_ms = (path_length / c) * 1000  # Convert to milliseconds
+        return tof_ms
+
+    def calculate_TDOA(self, mode1, mode2, layer_height_F2=None, layer_height_E=None):
+        """
+        Calculate TDOA between two propagation modes.
+
+        Mode nomenclature: "{n_hops}{Layer}-{m_hops}{Layer}"
+        Examples:
+        - "2F2-1F2": 2-hop F2 minus 1-hop F2
+        - "1F2-1E": 1-hop F2 minus 1-hop E
+        - "2F2-1E": 2-hop F2 minus 1-hop E
+
+        Parameters:
+        -----------
+        mode1 : str
+            First mode (e.g., "2F2", "1F2", "1E")
+        mode2 : str
+            Second mode (e.g., "1F2", "1E")
+        layer_height_F2 : float, optional
+            F2 layer height in km. If None, uses a default of 280 km.
+        layer_height_E : float, optional
+            E layer height in km. If None, uses self.E_layer_height (105 km).
+
+        Returns:
+        --------
+        float
+            TDOA in milliseconds (TOF_mode1 - TOF_mode2)
+        """
+        if layer_height_F2 is None:
+            layer_height_F2 = 280.0  # Default F2 layer height
+        if layer_height_E is None:
+            layer_height_E = self.E_layer_height
+
+        # Parse mode strings
+        def parse_mode(mode):
+            """Parse mode string like '2F2' into (n_hops=2, layer='F2')"""
+            # Extract number of hops (first digit)
+            n_hops = int(mode[0])
+            # Extract layer (rest of string)
+            layer = mode[1:]
+            return n_hops, layer
+
+        n_hops1, layer1 = parse_mode(mode1)
+        n_hops2, layer2 = parse_mode(mode2)
+
+        # Get appropriate layer heights
+        h1 = layer_height_F2 if layer1 == 'F2' else layer_height_E
+        h2 = layer_height_F2 if layer2 == 'F2' else layer_height_E
+
+        # Calculate TOFs
+        tof1 = self.calculate_TOF(n_hops1, h1)
+        tof2 = self.calculate_TOF(n_hops2, h2)
+
+        # Return TDOA
+        return tof1 - tof2
+
+    def calculate_TDOA_model(self, mode_string, h_min=225, h_max=375, n_points=100):
+        """
+        Calculate a linear TDOA model (slope, intercept) for a given propagation mode.
+
+        The model fits a line: layer_height = slope * TDOA + intercept
+        over the F2 layer height range.
+
+        Parameters:
+        -----------
+        mode_string : str
+            Mode string like "1F2-2F2", "1F2-1E", "2F2-1E"
+        h_min : float, optional
+            Minimum F2 layer height in km (default: 225)
+        h_max : float, optional
+            Maximum F2 layer height in km (default: 375)
+        n_points : int, optional
+            Number of points for linear fit (default: 100)
+
+        Returns:
+        --------
+        tuple
+            (slope, intercept) for the linear model
+        """
+        # Parse the mode string (e.g., "1F2-2F2" -> mode1="1F2", mode2="2F2")
+        modes = mode_string.split('-')
+        if len(modes) != 2:
+            raise ValueError(f"Invalid mode string: {mode_string}. Expected format: 'mode1-mode2'")
+
+        mode1, mode2 = modes
+
+        # Generate array of F2 layer heights
+        heights = np.linspace(h_min, h_max, n_points)
+
+        # Calculate TDOAs for each height
+        tdoas = np.array([self.calculate_TDOA(mode1, mode2, layer_height_F2=h) for h in heights])
+
+        # Fit a linear model: height = slope * TDOA + intercept
+        # Use polyfit with degree 1
+        slope, intercept = np.polyfit(tdoas, heights, 1)
+
+        return slope, intercept
 
     def __repr__(self):
         """String representation of PathInfo."""
