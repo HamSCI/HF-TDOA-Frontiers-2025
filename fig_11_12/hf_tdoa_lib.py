@@ -91,7 +91,10 @@ class PathInfo:
         tuple
             (latitude, longitude) in degrees
         """
-        from .eclipse_calculator import locator
+        try:
+            from .eclipse_calculator import locator
+        except ImportError:
+            from eclipse_calculator import locator
         lat, lon = locator.gridsquare2latlon(self.tx_grid, position='center')
         if not np.isscalar(lat):
             lat, lon = float(lat.item()), float(lon.item())
@@ -106,7 +109,10 @@ class PathInfo:
         tuple
             (latitude, longitude) in degrees
         """
-        from .eclipse_calculator import locator
+        try:
+            from .eclipse_calculator import locator
+        except ImportError:
+            from eclipse_calculator import locator
         lat, lon = locator.gridsquare2latlon(self.rx_grid, position='center')
         if not np.isscalar(lat):
             lat, lon = float(lat.item()), float(lon.item())
@@ -121,7 +127,10 @@ class PathInfo:
         tuple
             (midpoint_lat, midpoint_lon) in degrees
         """
-        from .eclipse_calculator import locator
+        try:
+            from .eclipse_calculator import locator
+        except ImportError:
+            from eclipse_calculator import locator
         return locator.gridsquare_midpoint(self.tx_grid, self.rx_grid)
 
     def get_path_azimuth(self):
@@ -133,7 +142,10 @@ class PathInfo:
         float
             Azimuth in degrees (0-360, where 0 is North)
         """
-        from .eclipse_calculator import geopack
+        try:
+            from .eclipse_calculator import geopack
+        except ImportError:
+            from eclipse_calculator import geopack
         tx_lat, tx_lon = self.get_tx_latlon()
         rx_lat, rx_lon = self.get_rx_latlon()
         azm = geopack.greatCircleAzm(tx_lat, tx_lon, rx_lat, rx_lon)
