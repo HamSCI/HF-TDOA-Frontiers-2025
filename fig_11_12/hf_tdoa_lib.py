@@ -613,28 +613,66 @@ def load_ionosonde_data(csv_path):
     return ionosonde_df
 
 
-def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'):
+def overlay_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv',
+                      overlay_hmF2=True, overlay_hmE=True,
+                      label='Austin Ionosonde',
+                      hmF2_color='purple', hmE_color='brown'):
     """
-    Overlays Austin, TX ionosonde data (hmF2 and hmE) on an existing axes.
+    Overlays ionosonde data (hmF2 and hmE) on an existing axes.
 
     Arguments:
     ax : matplotlib.axes.Axes
         The axes object to plot on.
     csv_path : str, optional
         Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
+    overlay_hmF2 : bool, optional
+        If True, overlay hmF2 data. Default is True.
+    overlay_hmE : bool, optional
+        If True, overlay hmE data. Default is True.
+    label : str, optional
+        Label prefix for the ionosonde data. Default is 'Austin Ionosonde'.
+    hmF2_color : str, optional
+        Color for hmF2 line. Default is 'purple'.
+    hmE_color : str, optional
+        Color for hmE line. Default is 'brown'.
     """
     ionosonde_df = load_ionosonde_data(csv_path)
 
-    ax.plot(ionosonde_df['UTC'], ionosonde_df['hmF2'], color='purple',
-            label="Austin Ionosonde hmF2", linewidth=2)
+    if overlay_hmF2:
+        ax.plot(ionosonde_df['UTC'], ionosonde_df['hmF2'], color=hmF2_color,
+                label=f"{label} hmF2", linewidth=2)
 
-    ax.plot(ionosonde_df['UTC'], ionosonde_df['hmE'], color='brown',
-            label="Austin Ionosonde hmE", linewidth=2)
+    if overlay_hmE:
+        ax.plot(ionosonde_df['UTC'], ionosonde_df['hmE'], color=hmE_color,
+                label=f"{label} hmE", linewidth=2)
 
 
-def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv', ylim=(75,450),
+def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv',
+                             overlay_hmF2=True, overlay_hmE=True):
+    """
+    Overlays Austin, TX ionosonde data (hmF2 and hmE) on an existing axes.
+
+    This is a convenience wrapper around overlay_ionosonde() with Austin-specific defaults.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    csv_path : str, optional
+        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
+    overlay_hmF2 : bool, optional
+        If True, overlay hmF2 data. Default is True.
+    overlay_hmE : bool, optional
+        If True, overlay hmE data. Default is True.
+    """
+    overlay_ionosonde(ax, csv_path=csv_path, overlay_hmF2=overlay_hmF2,
+                     overlay_hmE=overlay_hmE, label='Austin Ionosonde',
+                     hmF2_color='purple', hmE_color='brown')
+
+
+def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
               solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
-              overlay_solar_elevation=False, overlay_eclipse=False):
+              overlay_solar_elevation=False, overlay_eclipse=False,
+              ionosonde_dct=None):
     """
     Plots layer heights derived from TDOAs and compares with ionosonde measurements.
 
@@ -643,8 +681,6 @@ def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionoson
         DataFrame containing chirp data and TDOA measurements.
     tdoa_dct : dict
         Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
-    csv_path : str, optional
-        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
     ylim : tuple, optional
         Y-axis limits for the plot. Default is (75, 450).
     solar_lat : float, optional
@@ -659,6 +695,19 @@ def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionoson
         If True, overlay solar elevation angle. Default is False.
     overlay_eclipse : bool, optional
         If True, overlay eclipse obscuration. Default is False.
+    ionosonde_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_ionosonde().
+        If True, uses default parameters. If None, no ionosonde data is overlaid.
+        Available parameters:
+            - csv_path: Path to ionosonde CSV file
+            - overlay_hmF2: If True, overlay hmF2 data (default: True)
+            - overlay_hmE: If True, overlay hmE data (default: True)
+            - label: Label prefix for ionosonde data (default: 'Austin Ionosonde')
+            - hmF2_color: Color for hmF2 line (default: 'purple')
+            - hmE_color: Color for hmE line (default: 'brown')
+        Example: {'csv_path': 'path/to/file.csv', 'label': 'Boulder Ionosonde',
+                  'overlay_hmF2': True, 'overlay_hmE': False, 'hmF2_color': 'red'}
+        Default is None.
     """
     times = chirps['utc']
 
@@ -685,7 +734,11 @@ def plot_hmf2(chirps, tdoa_dct, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionoson
     ax.set_ylabel('Layer Height [km]')
     ax.set_xlabel('Time UTC')
 
-    overlay_austin_ionosonde(ax, csv_path)
+    # Overlay ionosonde data if requested
+    if (ionosonde_dct is not None) and (ionosonde_dct is not False):
+        if ionosonde_dct is True:
+            ionosonde_dct = {}
+        overlay_ionosonde(ax, **ionosonde_dct)
 
     # Add solar elevation and/or eclipse obscuration overlays if requested
     if overlay_solar_elevation or overlay_eclipse:
