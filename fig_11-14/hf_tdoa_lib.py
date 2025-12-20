@@ -1241,10 +1241,100 @@ def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionoso
                      hmF2_color='purple', hmE_color='brown')
 
 
+def load_tdoa_csv(csv_path, model_coeffs):
+    """
+    Loads TDOA data from a CSV file and applies the HF TDOA model to convert to layer heights.
+
+    The CSV file should have columns:
+    - utc: timestamp in ISO format (e.g., '2024-04-08 14:13:00')
+    - manualBeatNote_TDOA_ms: Manual Period Analysis TDOA values in milliseconds
+    - autoCorrelation_TDOA_ms: Auto-Correlated Analysis TDOA values in milliseconds
+
+    Arguments:
+    csv_path : str
+        Path to the CSV file containing TDOA data.
+    model_coeffs : tuple
+        Tuple of (slope, intercept) for the TDOA model.
+        Layer height = slope * TDOA_ms + intercept
+
+    Returns:
+    tdoa_df : pd.DataFrame
+        DataFrame containing:
+        - UTC datetime index
+        - manualBeatNote_TDOA_ms: Original TDOA values in ms
+        - autoCorrelation_TDOA_ms: Original TDOA values in ms
+        - manualBeatNote_height_km: Layer heights from manual analysis
+        - autoCorrelation_height_km: Layer heights from auto-correlation
+    """
+    # Load CSV with datetime parsing
+    tdoa_df = pd.read_csv(csv_path, parse_dates=['utc'])
+    tdoa_df = tdoa_df.set_index('utc')
+
+    # Apply TDOA model to convert TDOA to layer heights
+    slope, intercept = model_coeffs
+    tdoa_df['manualBeatNote_height_km'] = slope * tdoa_df['manualBeatNote_TDOA_ms'] + intercept
+    tdoa_df['autoCorrelation_height_km'] = slope * tdoa_df['autoCorrelation_TDOA_ms'] + intercept
+
+    return tdoa_df
+
+
+def overlay_tdoa_csv(ax, csv_path, model_coeffs,
+                     overlay_manual=True, overlay_autocorr=True,
+                     manual_label='Manual Period Analysis',
+                     autocorr_label='Auto-Correlated Analysis',
+                     manual_color='tab:blue', manual_linestyle='dotted',
+                     autocorr_color='tab:orange', autocorr_linestyle='dashdot'):
+    """
+    Overlays TDOA data from CSV files on an existing axes.
+
+    This function loads TDOA measurements from CSV files and applies the HF TDOA model
+    to convert them to layer heights before plotting.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    csv_path : str
+        Path to the CSV file containing TDOA data.
+    model_coeffs : tuple
+        Tuple of (slope, intercept) for the TDOA model.
+    overlay_manual : bool, optional
+        If True, overlay manual period analysis data. Default is True.
+    overlay_autocorr : bool, optional
+        If True, overlay auto-correlated analysis data. Default is True.
+    manual_label : str, optional
+        Label for manual analysis data. Default is 'Manual Period Analysis'.
+    autocorr_label : str, optional
+        Label for auto-correlation data. Default is 'Auto-Correlated Analysis'.
+    manual_color : str, optional
+        Color for manual analysis line. Default is 'tab:blue'.
+    manual_linestyle : str, optional
+        Linestyle for manual analysis. Default is 'dotted'.
+    autocorr_color : str, optional
+        Color for auto-correlation line. Default is 'tab:orange'.
+    autocorr_linestyle : str, optional
+        Linestyle for auto-correlation. Default is 'dashdot'.
+    """
+    tdoa_df = load_tdoa_csv(csv_path, model_coeffs)
+
+    if overlay_manual:
+        ax.plot(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
+                color=manual_color, linestyle=manual_linestyle,
+                label=manual_label, linewidth=2)
+        ax.scatter(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
+                   color=manual_color)
+
+    if overlay_autocorr:
+        ax.plot(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
+                color=autocorr_color, linestyle=autocorr_linestyle,
+                label=autocorr_label, linewidth=2)
+        ax.scatter(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
+                   color=autocorr_color)
+
+
 def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
               solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
               overlay_solar_elevation=False, overlay_eclipse=False,
-              ionosonde_dct=None):
+              ionosonde_dct=None, tdoa_csv_dct=None):
     """
     Plots layer heights derived from TDOAs and compares with ionosonde measurements.
 
@@ -1280,6 +1370,22 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         Example: {'csv_path': 'path/to/file.csv', 'label': 'Boulder Ionosonde',
                   'overlay_hmF2': True, 'overlay_hmE': False, 'hmF2_color': 'red'}
         Default is None.
+    tdoa_csv_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_tdoa_csv().
+        If True, uses default parameters. If None, no TDOA CSV data is overlaid.
+        Available parameters:
+            - csv_path: Path to TDOA CSV file (REQUIRED)
+            - model_coeffs: Tuple of (slope, intercept) for TDOA model (REQUIRED)
+            - overlay_manual: If True, overlay manual period analysis (default: True)
+            - overlay_autocorr: If True, overlay auto-correlated analysis (default: True)
+            - manual_label: Label for manual analysis (default: 'Manual Period Analysis')
+            - autocorr_label: Label for auto-correlation (default: 'Auto-Correlated Analysis')
+            - manual_color: Color for manual line (default: 'tab:blue')
+            - manual_linestyle: Linestyle for manual (default: 'dotted')
+            - autocorr_color: Color for autocorr line (default: 'tab:orange')
+            - autocorr_linestyle: Linestyle for autocorr (default: 'dashdot')
+        Example: {'csv_path': 'data/CSVs/file.csv', 'model_coeffs': (142, 36.1)}
+        Default is None.
     """
     times = chirps['utc']
 
@@ -1311,6 +1417,12 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         if ionosonde_dct is True:
             ionosonde_dct = {}
         overlay_ionosonde(ax, **ionosonde_dct)
+
+    # Overlay TDOA CSV data if requested
+    if (tdoa_csv_dct is not None) and (tdoa_csv_dct is not False):
+        if tdoa_csv_dct is True:
+            tdoa_csv_dct = {}
+        overlay_tdoa_csv(ax, **tdoa_csv_dct)
 
     # Add solar elevation and/or eclipse obscuration overlays if requested
     if overlay_solar_elevation or overlay_eclipse:
