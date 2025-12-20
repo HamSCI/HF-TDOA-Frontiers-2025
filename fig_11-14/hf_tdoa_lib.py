@@ -1614,10 +1614,10 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
         # Show date on all subplots for consistency
         title_from_pfx(ax, path_info, times.iloc[0])
 
-        # Add subplot label (a), (b), etc. using ax.text in the upper left
-        # Position it in axes coordinates - top left corner
-        ax.text(0.01, 0.98, label, transform=ax.transAxes,
-                fontsize=18, fontweight='bold', va='top', ha='left')
+        # Add subplot label (a), (b), etc. using ax.text outside the axes
+        # Position it in axes coordinates - outside upper left corner
+        ax.text(-0.08, 1.075, label, transform=ax.transAxes,
+                fontsize=30, fontweight='bold', va='top', ha='left')
 
         # Rotate x-axis labels
         for tick_label in ax.get_xticklabels():
