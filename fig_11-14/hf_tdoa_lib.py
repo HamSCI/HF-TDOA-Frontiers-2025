@@ -1611,17 +1611,13 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
             path_info = chirps.attrs.get('pfx', '')
 
         # Use title_from_pfx for consistent styling with Figure 11
-        # Only add date on first subplot
-        date = times.iloc[0] if idx == 0 else None
-        title_from_pfx(ax, path_info, date)
+        # Show date on all subplots for consistency
+        title_from_pfx(ax, path_info, times.iloc[0])
 
-        # Add subplot label (a), (b), etc. to the left title
-        if isinstance(path_info, str):
-            current_title = ax.get_title()
-        else:
-            # Get the current left title and prepend the subplot label
-            left_title = f'TX: {path_info.tx_call} ({path_info.tx_grid})\nRX: {path_info.rx_call} ({path_info.rx_grid})'
-            ax.set_title(f'{label} {left_title}', loc='left')
+        # Add subplot label (a), (b), etc. using ax.text in the upper left
+        # Position it in axes coordinates - top left corner
+        ax.text(0.01, 0.98, label, transform=ax.transAxes,
+                fontsize=18, fontweight='bold', va='top', ha='left')
 
         # Rotate x-axis labels
         for tick_label in ax.get_xticklabels():
