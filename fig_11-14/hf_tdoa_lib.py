@@ -1331,6 +1331,123 @@ def overlay_tdoa_csv(ax, csv_path, model_coeffs,
                    color=autocorr_color)
 
 
+def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
+                       solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
+                       overlay_solar_elevation=False, overlay_eclipse=False,
+                       ionosonde_dct=None, tdoa_csv_dct=None, show_date=True):
+    """
+    Internal helper function to plot HF TDOA layer heights on a given axis.
+
+    This function is used by both plot_hmf2() and plot_hmf2_subplot() to avoid code duplication.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    chirps : pd.DataFrame
+        DataFrame containing chirp data and TDOA measurements.
+    tdoa_dct : dict
+        Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
+    ylim : tuple, optional
+        Y-axis limits for the plot. Default is (75, 450).
+    solar_lat : float, optional
+        Latitude for solar calculations (degrees, +N/-S).
+    solar_lon : float, optional
+        Longitude for solar calculations (degrees, +E/-W).
+    solar_start : datetime.datetime, optional
+        Start time for solar calculations. If None, derived from plot x-axis limits.
+    solar_end : datetime.datetime, optional
+        End time for solar calculations. If None, derived from plot x-axis limits.
+    overlay_solar_elevation : bool, optional
+        If True, overlay solar elevation angle. Default is False.
+    overlay_eclipse : bool, optional
+        If True, overlay eclipse obscuration. Default is False.
+    ionosonde_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_ionosonde().
+    tdoa_csv_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_tdoa_csv().
+    show_date : bool, optional
+        If True, show date in the title. Default is True.
+    """
+    times = chirps['utc']
+
+    # Plot TDOA-derived layer heights
+    for set_name, params in tdoa_dct.items():
+        TDOAs = chirps[f'{set_name}_mean']
+        coefs = params['model_coeffs']
+        layer_heights = (coefs[0] * TDOAs) + coefs[1]
+
+        ax.plot(times, layer_heights,
+                label=set_name,
+                marker=params.get('marker', 'o'),
+                linestyle=params.get('linestyle'),
+                linewidth=params.get('linewidth'),
+                color=params.get('color'))
+
+    ax.set_ylim(ylim)
+
+    myFmt = mdates.DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(myFmt)
+    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
+    ax.set_ylabel('Layer Height [km]')
+    ax.set_xlabel('Time UTC')
+
+    # Overlay ionosonde data if requested
+    if (ionosonde_dct is not None) and (ionosonde_dct is not False):
+        if ionosonde_dct is True:
+            ionosonde_dct = {}
+        overlay_ionosonde(ax, **ionosonde_dct)
+
+    # Overlay TDOA CSV data if requested
+    if (tdoa_csv_dct is not None) and (tdoa_csv_dct is not False):
+        if tdoa_csv_dct is True:
+            tdoa_csv_dct = {}
+        overlay_tdoa_csv(ax, **tdoa_csv_dct)
+
+    # Add solar elevation and/or eclipse obscuration overlays if requested
+    if overlay_solar_elevation or overlay_eclipse:
+        if solar_lat is None or solar_lon is None:
+            print('WARNING: solar_lat and solar_lon must be provided for solar overlays.')
+        else:
+            try:
+                from eclipse_calculator import solarContext
+
+                # Set default times based on x-axis limits if not provided
+                if solar_start is None or solar_end is None:
+                    xlim = ax.get_xlim()
+                    if solar_start is None:
+                        solar_start = mdates.num2date(xlim[0]).replace(tzinfo=None)
+                    if solar_end is None:
+                        solar_end = mdates.num2date(xlim[1]).replace(tzinfo=None)
+
+                # Create solarTimeseries object
+                solar_ts = solarContext.solarTimeseries(
+                    sTime=solar_start,
+                    eTime=solar_end,
+                    lat=solar_lat,
+                    lon=solar_lon
+                )
+
+                if overlay_solar_elevation:
+                    solar_ts.overlaySolarElevation(ax)
+
+                if overlay_eclipse:
+                    solar_ts.overlayEclipse(ax)
+
+            except (ImportError, AttributeError) as e:
+                print(f'WARNING: Cannot overlay solar data. Error: {e}')
+
+    ax.legend()
+
+    # Use path_info for title
+    path_info = chirps.attrs.get('path_info', None)
+    if path_info is None:
+        path_info = chirps.attrs.get('pfx', '')
+
+    # Show date if requested
+    date = times.iloc[0] if show_date else None
+    title_from_pfx(ax, path_info, date)
+
+
 def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
               solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
               overlay_solar_elevation=False, overlay_eclipse=False,
@@ -1387,90 +1504,22 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         Example: {'csv_path': 'data/CSVs/file.csv', 'model_coeffs': (142, 36.1)}
         Default is None.
     """
-    times = chirps['utc']
+    fig = plt.figure(figsize=(16, 9))
+    ax = fig.add_subplot(1, 1, 1)
 
-    fig   = plt.figure(figsize=(16, 9))
-    ax    = fig.add_subplot(1, 1, 1)
+    # Use the shared helper function to do all the plotting
+    _plot_hmf2_on_axis(
+        ax, chirps, tdoa_dct, ylim=ylim,
+        solar_lat=solar_lat, solar_lon=solar_lon,
+        solar_start=solar_start, solar_end=solar_end,
+        overlay_solar_elevation=overlay_solar_elevation,
+        overlay_eclipse=overlay_eclipse,
+        ionosonde_dct=ionosonde_dct,
+        tdoa_csv_dct=tdoa_csv_dct,
+        show_date=True
+    )
 
-    for set_name, params in tdoa_dct.items():
-        TDOAs = chirps[f'{set_name}_mean']
-        coefs = params['model_coeffs']
-        layer_heights = (coefs[0] * TDOAs) + coefs[1]
-
-        line, = ax.plot(times, layer_heights,
-                label=set_name,
-                marker = params.get('marker', 'o'),
-                linestyle=params.get('linestyle'),
-                linewidth=params.get('linewidth'),
-                color=params.get('color'))
-
-    ax.set_ylim(ylim)
-
-    myFmt = mdates.DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(myFmt)
-    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
-    ax.set_ylabel('Layer Height [km]')
-    ax.set_xlabel('Time UTC')
-
-    # Overlay ionosonde data if requested
-    if (ionosonde_dct is not None) and (ionosonde_dct is not False):
-        if ionosonde_dct is True:
-            ionosonde_dct = {}
-        overlay_ionosonde(ax, **ionosonde_dct)
-
-    # Overlay TDOA CSV data if requested
-    if (tdoa_csv_dct is not None) and (tdoa_csv_dct is not False):
-        if tdoa_csv_dct is True:
-            tdoa_csv_dct = {}
-        overlay_tdoa_csv(ax, **tdoa_csv_dct)
-
-    # Add solar elevation and/or eclipse obscuration overlays if requested
-    if overlay_solar_elevation or overlay_eclipse:
-        # Check that required parameters are provided
-        if solar_lat is None or solar_lon is None:
-            print('WARNING: solar_lat and solar_lon must be provided for solar overlays.')
-        else:
-            # Import here to avoid circular dependencies
-            try:
-                from eclipse_calculator import solarContext
-
-                # Set default times based on x-axis limits if not provided
-                if solar_start is None or solar_end is None:
-                    xlim = ax.get_xlim()
-                    # Convert matplotlib date numbers to datetime objects
-                    if solar_start is None:
-                        solar_start = mdates.num2date(xlim[0]).replace(tzinfo=None)
-                    if solar_end is None:
-                        solar_end = mdates.num2date(xlim[1]).replace(tzinfo=None)
-
-                # Create solarTimeseries object
-                solar_ts = solarContext.solarTimeseries(
-                    sTime=solar_start,
-                    eTime=solar_end,
-                    lat=solar_lat,
-                    lon=solar_lon
-                )
-
-                # Overlay solar elevation if requested
-                if overlay_solar_elevation:
-                    solar_ts.overlaySolarElevation(ax)
-
-                # Overlay eclipse obscuration if requested
-                if overlay_eclipse:
-                    solar_ts.overlayEclipse(ax)
-
-            except (ImportError, AttributeError) as e:
-                print(f'WARNING: Cannot overlay solar data. Error: {e}')
-
-    ax.legend()
     fig.autofmt_xdate()
-
-    # Use path_info if available, otherwise fall back to pfx string for backward compatibility
-    path_info = chirps.attrs.get('path_info', None)
-    if path_info is None:
-        path_info = chirps.attrs.get('pfx', '')
-    title_from_pfx(ax, path_info, times[0])
-
     plt.tight_layout()
     plt.show()
 
@@ -1531,88 +1580,17 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
     for idx, (chirps, tdoa_dct, ax, label, tdoa_csv_dct) in enumerate(
             zip(chirps_list, tdoa_dct_list, axes, subplot_labels, tdoa_csv_dct_list)):
 
-        times = chirps['utc']
-
-        # Plot TDOA-derived layer heights
-        for set_name, params in tdoa_dct.items():
-            TDOAs = chirps[f'{set_name}_mean']
-            coefs = params['model_coeffs']
-            layer_heights = (coefs[0] * TDOAs) + coefs[1]
-
-            ax.plot(times, layer_heights,
-                    label=set_name,
-                    marker=params.get('marker', 'o'),
-                    linestyle=params.get('linestyle'),
-                    linewidth=params.get('linewidth'),
-                    color=params.get('color'))
-
-        ax.set_ylim(ylim)
-
-        myFmt = mdates.DateFormatter('%H:%M')
-        ax.xaxis.set_major_formatter(myFmt)
-        ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
-        ax.set_ylabel('Layer Height [km]')
-        ax.set_xlabel('Time UTC')
-
-        # Overlay ionosonde data if requested
-        if (ionosonde_dct is not None) and (ionosonde_dct is not False):
-            if ionosonde_dct is True:
-                ionosonde_dct_copy = {}
-            else:
-                ionosonde_dct_copy = ionosonde_dct.copy()
-            overlay_ionosonde(ax, **ionosonde_dct_copy)
-
-        # Overlay TDOA CSV data if requested
-        if (tdoa_csv_dct is not None) and (tdoa_csv_dct is not False):
-            if tdoa_csv_dct is True:
-                tdoa_csv_dct_copy = {}
-            else:
-                tdoa_csv_dct_copy = tdoa_csv_dct.copy()
-            overlay_tdoa_csv(ax, **tdoa_csv_dct_copy)
-
-        # Add solar elevation and/or eclipse obscuration overlays if requested
-        if overlay_solar_elevation or overlay_eclipse:
-            if solar_lat is None or solar_lon is None:
-                print('WARNING: solar_lat and solar_lon must be provided for solar overlays.')
-            else:
-                try:
-                    from eclipse_calculator import solarContext
-
-                    # Set default times based on x-axis limits if not provided
-                    if solar_start is None or solar_end is None:
-                        xlim = ax.get_xlim()
-                        if solar_start is None:
-                            solar_start = mdates.num2date(xlim[0]).replace(tzinfo=None)
-                        if solar_end is None:
-                            solar_end = mdates.num2date(xlim[1]).replace(tzinfo=None)
-
-                    # Create solarTimeseries object
-                    solar_ts = solarContext.solarTimeseries(
-                        sTime=solar_start,
-                        eTime=solar_end,
-                        lat=solar_lat,
-                        lon=solar_lon
-                    )
-
-                    if overlay_solar_elevation:
-                        solar_ts.overlaySolarElevation(ax)
-
-                    if overlay_eclipse:
-                        solar_ts.overlayEclipse(ax)
-
-                except (ImportError, AttributeError) as e:
-                    print(f'WARNING: Cannot overlay solar data. Error: {e}')
-
-        ax.legend()
-
-        # Use path_info for title - same format as plot_hmf2
-        path_info = chirps.attrs.get('path_info', None)
-        if path_info is None:
-            path_info = chirps.attrs.get('pfx', '')
-
-        # Use title_from_pfx for consistent styling with Figure 11
-        # Show date on all subplots for consistency
-        title_from_pfx(ax, path_info, times.iloc[0])
+        # Use the shared helper function to do all the plotting
+        _plot_hmf2_on_axis(
+            ax, chirps, tdoa_dct, ylim=ylim,
+            solar_lat=solar_lat, solar_lon=solar_lon,
+            solar_start=solar_start, solar_end=solar_end,
+            overlay_solar_elevation=overlay_solar_elevation,
+            overlay_eclipse=overlay_eclipse,
+            ionosonde_dct=ionosonde_dct,
+            tdoa_csv_dct=tdoa_csv_dct,
+            show_date=True
+        )
 
         # Add subplot label (a), (b), etc. using ax.text outside the axes
         # Position it in axes coordinates - outside upper left corner
