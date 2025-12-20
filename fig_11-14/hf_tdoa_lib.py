@@ -587,6 +587,12 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     Finds chirps in a list of WAV files using cross-correlation with a template.
     This functions returns the top 10 chirp locations and their correlation coefficients for each WAV file.
 
+    The function displays detailed processing information including:
+    - Path information (TX/RX stations, range, band)
+    - Template file and sweep rate
+    - Progress bar showing file-by-file processing
+    - Number of chirps found per file
+
     Arguments:
     wavlist : list
         List of paths to WAV files to be analyzed.
@@ -620,8 +626,19 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     else:
         path_info = pfx
 
+    # Print processing information
+    print(f"\n{'='*70}")
+    print(f"Finding Chirps via Cross-Correlation")
+    print(f"{'='*70}")
+    print(f"  Path Info:      {path_info}")
+    print(f"  Template:       {os.path.basename(template)}")
+    print(f"  Sweep Rate:     {sweep_rate} Hz/ms")
+    print(f"  Files to Process: {len(wavlist)}")
+    print(f"  Chirps per File: Top 10")
+    print(f"{'='*70}\n")
+
     sample_env, sample_fs = load_wav(template)
-    template = sample_env['x']
+    template_data = sample_env['x']
 
     # Here we are effectively taking time components
     utcs     = []
@@ -629,14 +646,17 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     chirps_y = []
     wav_data = []
 
-    for file in wavlist:
+    # Use tqdm progress bar for file processing
+    pbar = tqdm(wavlist, desc="Finding chirps", unit="file", disable=plot_correlation)
+
+    for file in pbar:
         bname   = os.path.basename(file)
         utc_str = bname[:13]
         utc     = datetime.datetime.strptime(utc_str, '%Y%m%d.%H%M')
 
         wav_env, wav_fs = load_wav(file)
 
-        y = signal.correlate(wav_env['x'], template, mode='same')
+        y = signal.correlate(wav_env['x'], template_data, mode='same')
         x = np.arange(0, len(y), 1)
 
         peaks       = signal.find_peaks(y, distance=300)[0]
@@ -650,6 +670,11 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
         chirps_x.append(cx)
         chirps_y.append(cy)
         wav_data.append(wav_env)
+
+        # Update progress bar with number of chirps found and max correlation
+        if not plot_correlation:
+            max_corr = np.max(cy) if len(cy) > 0 else 0
+            pbar.set_postfix({'Chirps': len(cx), 'Max Corr': f'{max_corr:.2e}'})
 
         if plot_correlation:
             fig = plt.figure(figsize=(16,9))
@@ -665,13 +690,17 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
             ax.set_title(bname)
             plt.show()
             plt.close(fig)
-        else:
-            print(file, end = "\r")
+
+    if not plot_correlation:
+        pbar.close()
 
     chirps = pd.DataFrame({'utc':utcs, 'data':wav_data, 'x':chirps_x, 'y':chirps_y, 'file':file})
     chirps.attrs['path_info'] = path_info
     chirps.attrs['pfx'] = path_info.pfx  # Keep for backward compatibility
     chirps.attrs['sweep_rate'] = sweep_rate
+
+    print(f"✓ Completed chirp detection: {len(chirps)} files processed, {len(chirps)*10} total chirps found\n")
+
     return chirps
 
 
