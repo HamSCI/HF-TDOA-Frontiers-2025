@@ -1,0 +1,16 @@
+name: hf-tdoa
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - numpy<2
+  - astropy>=6,<7
+  - matplotlib
+  - scipy
+  - pandas
+  - cartopy
+  - geographiclib
+  - ipykernel
+  - jupyterlab
+  - pydub
