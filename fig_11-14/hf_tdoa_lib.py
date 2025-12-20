@@ -17,6 +17,36 @@ from scipy.io import wavfile
 import pandas as pd
 
 
+# Mode-specific configuration parameters
+# Each mode includes filter limits, search limits, and plotting parameters
+MODE_CONFIGS = {
+    '2F2-1F2': {
+        'filter_limts': [10, 50],           # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 11, 20],  # (start_offset, end_offset, min_freq, max_freq)
+        'linestyle': '--',
+        'linewidth': 3,
+        'color': 'tab:green',
+        'marker': 'o'
+    },
+    '1F2-1E': {
+        'filter_limts': [2.5, 30],          # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 5, 12],  # (start_offset, end_offset, min_freq, max_freq)
+        'linestyle': '-.',
+        'linewidth': 1.5,
+        'color': 'tab:blue',
+        'marker': '*'
+    },
+    '2F2-1E': {
+        'filter_limts': [20, 30],           # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 22, 30],  # (start_offset, end_offset, min_freq, max_freq)
+        'linestyle': ':',
+        'linewidth': 2.5,
+        'color': 'tab:orange',
+        'marker': '^'
+    }
+}
+
+
 class PathInfo:
     """
     Parses and stores transmitter/receiver path information from a prefix string.
@@ -833,8 +863,8 @@ def plot_chirp_fft(title, tlim, minfreq, maxfreq, wav_df, sweep_rate, env, tvec,
     plt.close(fig)
 
 
-def find_TDOAs(wav_data, search_limits, filter_limts,
-               set_name='TDOAs', plot_fft=False, only_one=True):
+def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
+               mode_string='2F2-1F2', set_name=None, plot_fft=False, only_one=True, **overrides):
     """
     Finds TDOAs in a set of WAV files given chirp start locations.
 
@@ -843,8 +873,10 @@ def find_TDOAs(wav_data, search_limits, filter_limts,
     Arguments:
     wav_data : pd.DataFrame
         DataFrame containing WAV file data and chirp start locations.
-    search_limits : tuple, (start_offset, end_offset, min_freq, max_freq)
+    search_limits : tuple, optional
+        (start_offset, end_offset, min_freq, max_freq)
         This is used to range gate the chirp signal in time to look for an echo from a particular ionospheric region.
+        If None, uses the default for the specified mode_string.
         start_offset : float
             Start time offset (in seconds) from chirp start to begin FFT analysis.
         end_offset : float
@@ -853,19 +885,41 @@ def find_TDOAs(wav_data, search_limits, filter_limts,
             Minimum frequency for FFT peak search.
         max_freq : float
             Maximum frequency for FFT peak search.
-    filter_limts : tuple
+    filter_limts : tuple, optional
         Frequency limits for bandpass filtering (low_pass_freq, high_pass_freq).
+        If None, uses the default for the specified mode_string.
+    mode_string : str, optional
+        Propagation mode identifier (e.g., '2F2-1F2', '1F2-1E', '2F2-1E').
+        Default is '2F2-1F2'. Used to look up default parameters from MODE_CONFIGS.
     set_name : str, optional
-        Name of the column to store TDOA results. Default is 'TDOAs'.
+        Name of the column to store TDOA results. If None, uses mode_string as set_name.
     plot_fft : bool, optional
         If True, plots the FFT for each chirp analyzed. Default is False.
     only_one : bool, optional
         If True, processes only the first chirp in first WAV file. Used for debugging.
+    **overrides : dict, optional
+        Additional keyword arguments to override default mode configuration parameters.
 
     Returns:
     wav_data : pd.DataFrame
         Updated DataFrame with TDOA results added.
     """
+    # Get default configuration for the mode
+    if mode_string not in MODE_CONFIGS:
+        raise ValueError(f"Unknown mode_string: {mode_string}. Available modes: {list(MODE_CONFIGS.keys())}")
+
+    config = MODE_CONFIGS[mode_string].copy()
+
+    # Apply any overrides
+    config.update(overrides)
+
+    # Use provided parameters or fall back to config defaults
+    if search_limits is None:
+        search_limits = config['search_limits']
+    if filter_limts is None:
+        filter_limts = config['filter_limts']
+    if set_name is None:
+        set_name = mode_string
     sweep_rate = wav_data.attrs['sweep_rate'] # Sweep rate in Hz/ms
 
     all_beats  = []
@@ -942,6 +996,54 @@ def title_from_pfx(ax, pfx, date=None):
     if date is not None:
         date_str = date.strftime('%Y %b %d')
         ax.set_title(date_str, loc='center', fontsize=34)
+
+
+def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
+    """
+    Build a TDOA configuration dictionary for use with plot_TDOAs and plot_hmf2.
+
+    This function creates a dictionary with mode-specific parameters and TDOA model coefficients.
+
+    Arguments:
+    chirps : pd.DataFrame
+        DataFrame containing chirp data. Must have 'path_info' in attrs.
+    mode_strings : list of str, optional
+        List of mode strings to include in the configuration (e.g., ['2F2-1F2', '1F2-1E']).
+        If None, includes all modes defined in MODE_CONFIGS.
+    **mode_overrides : dict, optional
+        Override parameters for specific modes. Use mode_string as key with a dict of parameters.
+        Example: build_tdoa_config(chirps, **{'2F2-1F2': {'color': 'red', 'linewidth': 5}})
+
+    Returns:
+    tdoa_dct : dict
+        Dictionary with mode configurations including model_coeffs and plotting parameters.
+    """
+    path_info = chirps.attrs.get('path_info')
+    if path_info is None:
+        raise ValueError("chirps must have 'path_info' in attrs")
+
+    if mode_strings is None:
+        mode_strings = list(MODE_CONFIGS.keys())
+
+    tdoa_dct = {}
+    for mode_string in mode_strings:
+        if mode_string not in MODE_CONFIGS:
+            raise ValueError(f"Unknown mode_string: {mode_string}. Available modes: {list(MODE_CONFIGS.keys())}")
+
+        # Start with the base config
+        config = MODE_CONFIGS[mode_string].copy()
+
+        # Calculate model coefficients
+        config['mode_string'] = mode_string
+        config['model_coeffs'] = path_info.calculate_TDOA_model(mode_string)
+
+        # Apply any mode-specific overrides
+        if mode_string in mode_overrides:
+            config.update(mode_overrides[mode_string])
+
+        tdoa_dct[mode_string] = config
+
+    return tdoa_dct
 
 
 def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3)):
