@@ -1473,3 +1473,162 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
 
     plt.tight_layout()
     plt.show()
+
+
+def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350),
+                      solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
+                      overlay_solar_elevation=False, overlay_eclipse=False,
+                      ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16)):
+    """
+    Creates a multi-panel subplot figure with layer heights from multiple datasets.
+
+    This is useful for creating figures like Figure 12 with AB5YO 40m and 60m.
+
+    Arguments:
+    chirps_list : list of pd.DataFrame
+        List of chirps DataFrames, one for each subplot.
+    tdoa_dct_list : list of dict
+        List of TDOA configuration dictionaries, one for each subplot.
+    subplot_labels : list of str, optional
+        Labels for each subplot (e.g., ['(a)', '(b)']). If None, uses (a), (b), (c), etc.
+    ylim : tuple, optional
+        Y-axis limits for all plots. Default is (200, 350).
+    solar_lat : float, optional
+        Latitude for solar calculations (degrees, +N/-S).
+    solar_lon : float, optional
+        Longitude for solar calculations (degrees, +E/-W).
+    solar_start : datetime.datetime, optional
+        Start time for solar calculations.
+    solar_end : datetime.datetime, optional
+        End time for solar calculations.
+    overlay_solar_elevation : bool, optional
+        If True, overlay solar elevation angle. Default is False.
+    overlay_eclipse : bool, optional
+        If True, overlay eclipse obscuration. Default is False.
+    ionosonde_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_ionosonde() for all subplots.
+    tdoa_csv_dct_list : list of dict, optional
+        List of TDOA CSV dictionaries, one for each subplot. If None, no CSV data is overlaid.
+    figsize : tuple, optional
+        Figure size (width, height). Default is (15, 16).
+    """
+    import datetime
+
+    n_plots = len(chirps_list)
+
+    if subplot_labels is None:
+        subplot_labels = [f'({chr(97 + i)})' for i in range(n_plots)]  # (a), (b), (c), ...
+
+    if tdoa_csv_dct_list is None:
+        tdoa_csv_dct_list = [None] * n_plots
+
+    fig, axes = plt.subplots(n_plots, 1, figsize=figsize)
+
+    # Ensure axes is iterable even if n_plots == 1
+    if n_plots == 1:
+        axes = [axes]
+
+    for idx, (chirps, tdoa_dct, ax, label, tdoa_csv_dct) in enumerate(
+            zip(chirps_list, tdoa_dct_list, axes, subplot_labels, tdoa_csv_dct_list)):
+
+        times = chirps['utc']
+
+        # Plot TDOA-derived layer heights
+        for set_name, params in tdoa_dct.items():
+            TDOAs = chirps[f'{set_name}_mean']
+            coefs = params['model_coeffs']
+            layer_heights = (coefs[0] * TDOAs) + coefs[1]
+
+            ax.plot(times, layer_heights,
+                    label=set_name,
+                    marker=params.get('marker', 'o'),
+                    linestyle=params.get('linestyle'),
+                    linewidth=params.get('linewidth'),
+                    color=params.get('color'))
+
+        ax.set_ylim(ylim)
+
+        myFmt = mdates.DateFormatter('%H:%M')
+        ax.xaxis.set_major_formatter(myFmt)
+        ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
+        ax.set_ylabel('Layer Height [km]')
+        ax.set_xlabel('Time UTC')
+
+        # Overlay ionosonde data if requested
+        if (ionosonde_dct is not None) and (ionosonde_dct is not False):
+            if ionosonde_dct is True:
+                ionosonde_dct_copy = {}
+            else:
+                ionosonde_dct_copy = ionosonde_dct.copy()
+            overlay_ionosonde(ax, **ionosonde_dct_copy)
+
+        # Overlay TDOA CSV data if requested
+        if (tdoa_csv_dct is not None) and (tdoa_csv_dct is not False):
+            if tdoa_csv_dct is True:
+                tdoa_csv_dct_copy = {}
+            else:
+                tdoa_csv_dct_copy = tdoa_csv_dct.copy()
+            overlay_tdoa_csv(ax, **tdoa_csv_dct_copy)
+
+        # Add solar elevation and/or eclipse obscuration overlays if requested
+        if overlay_solar_elevation or overlay_eclipse:
+            if solar_lat is None or solar_lon is None:
+                print('WARNING: solar_lat and solar_lon must be provided for solar overlays.')
+            else:
+                try:
+                    from eclipse_calculator import solarContext
+
+                    # Set default times based on x-axis limits if not provided
+                    if solar_start is None or solar_end is None:
+                        xlim = ax.get_xlim()
+                        if solar_start is None:
+                            solar_start = mdates.num2date(xlim[0]).replace(tzinfo=None)
+                        if solar_end is None:
+                            solar_end = mdates.num2date(xlim[1]).replace(tzinfo=None)
+
+                    # Create solarTimeseries object
+                    solar_ts = solarContext.solarTimeseries(
+                        sTime=solar_start,
+                        eTime=solar_end,
+                        lat=solar_lat,
+                        lon=solar_lon
+                    )
+
+                    if overlay_solar_elevation:
+                        solar_ts.overlaySolarElevation(ax)
+
+                    if overlay_eclipse:
+                        solar_ts.overlayEclipse(ax)
+
+                except (ImportError, AttributeError) as e:
+                    print(f'WARNING: Cannot overlay solar data. Error: {e}')
+
+        ax.legend()
+
+        # Use path_info for title - same format as plot_hmf2
+        path_info = chirps.attrs.get('path_info', None)
+        if path_info is None:
+            path_info = chirps.attrs.get('pfx', '')
+
+        # Use title_from_pfx for consistent styling with Figure 11
+        # Only add date on first subplot
+        date = times.iloc[0] if idx == 0 else None
+        title_from_pfx(ax, path_info, date)
+
+        # Add subplot label (a), (b), etc. to the left title
+        if isinstance(path_info, str):
+            current_title = ax.get_title()
+        else:
+            # Get the current left title and prepend the subplot label
+            left_title = f'TX: {path_info.tx_call} ({path_info.tx_grid})\nRX: {path_info.rx_call} ({path_info.rx_grid})'
+            ax.set_title(f'{label} {left_title}', loc='left')
+
+        # Rotate x-axis labels
+        for tick_label in ax.get_xticklabels():
+            tick_label.set_rotation(45)
+            tick_label.set_horizontalalignment('right')
+
+    plt.tight_layout()
+    plt.subplots_adjust(hspace=0.3)
+    plt.show()
+    plt.close(fig)
