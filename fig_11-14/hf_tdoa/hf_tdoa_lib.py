@@ -1105,7 +1105,7 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
     return tdoa_dct
 
 
-def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3)):
+def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
     """
     Plots TDOA measurements over time for multiple propagation modes.
 
@@ -1116,6 +1116,9 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3)):
         Dictionary containing TDOA set configurations with plotting parameters.
     ylim : tuple, optional
         Y-axis limits for the plot. Default is (0, 3).
+    savefig : str, optional
+        If provided, saves the figure to this file path. High-resolution JPEG recommended.
+        If None (default), figure is not saved to disk.
     """
     times = chirps['utc']
     fig   = plt.figure(figsize=(16, 9))
@@ -1165,6 +1168,12 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3)):
     title_from_pfx(ax, path_info, times[0])
 
     plt.tight_layout()
+
+    # Save figure if filename provided
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300, bbox_inches='tight', format='jpeg', pil_kwargs={'quality': 95})
+        print(f"Figure saved to: {savefig}")
+
     plt.show()
     plt.close(fig)
 
@@ -1451,7 +1460,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
 def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
               solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
               overlay_solar_elevation=False, overlay_eclipse=False,
-              ionosonde_dct=None, tdoa_csv_dct=None):
+              ionosonde_dct=None, tdoa_csv_dct=None, savefig=None):
     """
     Plots layer heights derived from TDOAs and compares with ionosonde measurements.
 
@@ -1503,6 +1512,9 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
             - autocorr_linestyle: Linestyle for autocorr (default: 'dashdot')
         Example: {'csv_path': 'data/CSVs/file.csv', 'model_coeffs': (142, 36.1)}
         Default is None.
+    savefig : str, optional
+        If provided, saves the figure to this file path. High-resolution JPEG recommended.
+        If None (default), figure is not saved to disk.
     """
     fig = plt.figure(figsize=(16, 9))
     ax = fig.add_subplot(1, 1, 1)
@@ -1521,13 +1533,20 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
 
     fig.autofmt_xdate()
     plt.tight_layout()
+
+    # Save figure if filename provided
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300, bbox_inches='tight', format='jpeg', pil_kwargs={'quality': 95})
+        print(f"Figure saved to: {savefig}")
+
     plt.show()
+    plt.close(fig)
 
 
 def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350),
                       solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                       overlay_solar_elevation=False, overlay_eclipse=False,
-                      ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16)):
+                      ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16), savefig=None):
     """
     Creates a multi-panel subplot figure with layer heights from multiple datasets.
 
@@ -1560,6 +1579,9 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
         List of TDOA CSV dictionaries, one for each subplot. If None, no CSV data is overlaid.
     figsize : tuple, optional
         Figure size (width, height). Default is (15, 16).
+    savefig : str, optional
+        If provided, saves the figure to this file path. High-resolution JPEG recommended.
+        If None (default), figure is not saved to disk.
     """
     import datetime
 
@@ -1604,5 +1626,11 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
 
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.3)
+
+    # Save figure if filename provided
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300, bbox_inches='tight', format='jpeg', pil_kwargs={'quality': 95})
+        print(f"Figure saved to: {savefig}")
+
     plt.show()
     plt.close(fig)
