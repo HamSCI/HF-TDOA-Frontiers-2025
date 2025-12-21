@@ -29,3 +29,5 @@ dist/
 # Matplotlib/font caches created during runs
 .matplotlib/
 .mplconfig_test/
+
+.claude
