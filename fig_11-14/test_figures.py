@@ -39,17 +39,18 @@ class NotebookFigureTester:
         Initialize the tester.
 
         Args:
-            notebooks_dir: Directory containing notebooks (default: current directory)
+            notebooks_dir: Directory containing notebook subdirectories (default: current directory)
             submitted_dir: Directory containing baseline figures (default: submitted_figures)
         """
         self.notebooks_dir = Path(notebooks_dir).resolve()
         self.submitted_dir = Path(submitted_dir).resolve()
 
-        # Mapping of notebooks to their expected output figures
+        # Mapping of notebook subdirectories to their notebooks and expected output figures
+        # Format: 'subdir': {'notebook': 'name.ipynb', 'figures': ['fig1.jpg', ...]}
         self.notebook_outputs = {
-            'fig_11.ipynb': ['fig_11.jpg'],
-            'fig_12.ipynb': ['fig_12.jpg'],
-            'fig_13_14.ipynb': ['fig_13.jpg', 'fig_14.jpg']
+            'fig_11': {'notebook': 'fig_11.ipynb', 'figures': ['fig_11.jpg']},
+            'fig_12': {'notebook': 'fig_12.ipynb', 'figures': ['fig_12.jpg']},
+            'fig_13_14': {'notebook': 'fig_13_14.ipynb', 'figures': ['fig_13.jpg', 'fig_14.jpg']}
         }
 
     def run_notebook(self, notebook_path: Path) -> Tuple[bool, str]:
@@ -262,17 +263,29 @@ class NotebookFigureTester:
             print(f"❌ ERROR: Baseline directory not found: {self.submitted_dir}")
             return results
 
-        # Process each notebook
-        for notebook_name, expected_figures in self.notebook_outputs.items():
-            notebook_path = self.notebooks_dir / notebook_name
+        # Process each notebook subdirectory
+        for subdir_name, config in self.notebook_outputs.items():
+            notebook_name = config['notebook']
+            expected_figures = config['figures']
+
+            subdir_path = self.notebooks_dir / subdir_name
+            notebook_path = subdir_path / notebook_name
 
             print(f"\n{'─' * 70}")
-            print(f"Testing: {notebook_name}")
+            print(f"Testing: {subdir_name}/{notebook_name}")
             print(f"{'─' * 70}")
+
+            if not subdir_path.exists():
+                print(f"  ⚠ SKIPPED - Subdirectory not found: {subdir_path}")
+                results['details'][subdir_name] = {
+                    'status': 'skipped',
+                    'reason': 'subdirectory not found'
+                }
+                continue
 
             if not notebook_path.exists():
                 print(f"  ⚠ SKIPPED - Notebook not found: {notebook_path}")
-                results['details'][notebook_name] = {
+                results['details'][subdir_name] = {
                     'status': 'skipped',
                     'reason': 'notebook not found'
                 }
@@ -294,7 +307,7 @@ class NotebookFigureTester:
             if not success:
                 print(f"  ❌ FAILED - {error_msg}")
                 results['notebooks_failed'] += 1
-                results['details'][notebook_name] = notebook_result
+                results['details'][subdir_name] = notebook_result
                 continue
 
             print(f"  ✓ Notebook executed successfully")
@@ -302,7 +315,8 @@ class NotebookFigureTester:
             # Compare generated figures
             all_figures_good = True
             for figure_name in expected_figures:
-                new_figure = self.notebooks_dir / figure_name
+                # Figures are generated in the subdirectory
+                new_figure = subdir_path / figure_name
                 baseline_figure = self.submitted_dir / figure_name
 
                 results['figures_compared'] += 1
@@ -346,7 +360,7 @@ class NotebookFigureTester:
             else:
                 results['notebooks_failed'] += 1
 
-            results['details'][notebook_name] = notebook_result
+            results['details'][subdir_name] = notebook_result
 
         return results
 

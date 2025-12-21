@@ -28,8 +28,17 @@ This will install all required dependencies including:
 - Astropy, GeographicLib
 - JupyterLab
 - tqdm, pydub
+- Testing tools (pillow, scikit-image, nbconvert)
 
-2. Launch Jupyter Lab:
+2. Install the `hf_tdoa` package in development mode:
+
+```bash
+pip install -e .
+```
+
+This makes the `hf_tdoa` library accessible from anywhere on your system, allowing notebooks in subdirectories to import it easily.
+
+3. Launch Jupyter Lab:
 
 ```bash
 jupyter lab
@@ -41,19 +50,26 @@ jupyter lab
 .
 ├── README.md                    # This file
 ├── environment.yml              # Conda environment specification
-├── fig_11.ipynb                # Figure 11 analysis notebook
-├── fig_12.ipynb                # Figure 12 analysis notebook
-├── fig_13_14.ipynb             # Figures 13-14 analysis notebook
-├── data/                       # WAV recordings and CSV data
+├── setup.py                     # Package installation script
+├── test_figures.py              # Figure reproducibility test script
+├── TEST_README.md               # Testing documentation
+├── fig_11/                      # Figure 11 analysis
+│   └── fig_11.ipynb             # Figure 11 notebook
+├── fig_12/                      # Figure 12 analysis
+│   └── fig_12.ipynb             # Figure 12 notebook
+├── fig_13_14/                   # Figures 13-14 analysis
+│   └── fig_13_14.ipynb          # Figures 13-14 notebook
+├── data/                        # WAV recordings and CSV data
 │   ├── TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m/
 │   ├── TX_WA5FRF_EL09nn-RX_AB5YO_EL09so-40m/
 │   ├── TX_WA5FRF_EL09nn-RX_AB5YO_EL09so-60m/
 │   ├── TX_WA5FRF_EL09nn-RX_N6RFM_EM12jw-40m/
-│   └── CSVs/                   # Ionosonde and manual TDOA data
-├── templates/                  # Reference chirp templates
-└── hf_tdoa/                    # HF TDOA analysis package
-    ├── __init__.py             # Package initialization
-    ├── hf_tdoa_lib.py          # Core TDOA analysis library
+│   └── CSVs/                    # Ionosonde and manual TDOA data
+├── templates/                   # Reference chirp templates
+├── submitted_figures/           # Baseline figures for testing
+└── hf_tdoa/                     # HF TDOA analysis package
+    ├── __init__.py              # Package initialization
+    ├── hf_tdoa_lib.py           # Core TDOA analysis library
     ├── calcSun.py              # Solar position calculations
     ├── eclipse_calc.py         # Eclipse obscuration calculations
     ├── solarContext.py         # Solar context and overlays
@@ -67,6 +83,23 @@ jupyter lab
 ## Core Package: hf_tdoa
 
 The `hf_tdoa` package provides comprehensive functionality for HF TDOA analysis. All functions and classes are accessible via `import hf_tdoa` thanks to the pythonic package structure.
+
+### Installation as a Package
+
+The `hf_tdoa` library is installed as an editable package using `pip install -e .` during setup. This approach:
+
+- Makes the library importable from any location on your system
+- Allows notebooks in subdirectories to easily access the library
+- Enables immediate reflection of code changes without reinstallation
+- Follows Python best practices for local development
+
+After installation, you can import the library from anywhere:
+
+```python
+import hf_tdoa as tdoa
+```
+
+The library remains editable, so any changes you make to files in the `hf_tdoa/` directory are immediately available without reinstalling.
 
 ### Key Classes
 
@@ -126,7 +159,10 @@ Each mode includes optimized filter limits, search windows, and plotting paramet
 
 ## Jupyter Notebooks
 
-### fig_11.ipynb
+Each notebook is organized in its own subdirectory for better organization and testing. Navigate to the respective subdirectory to run each notebook.
+
+### fig_11/fig_11.ipynb
+
 Analyzes the WA5FRF→N5DUP 40m path and generates Figure 11:
 - Chirp detection via cross-correlation
 - TDOA extraction for 2F2-1F2 mode
@@ -140,13 +176,15 @@ Analyzes the WA5FRF→N5DUP 40m path and generates Figure 11:
 3. Calculate TDOA model coefficients automatically
 4. Generate layer height plot with multiple overlays
 
-### fig_12.ipynb
+### fig_12/fig_12.ipynb
+
 Generates Figure 12 with dual-band analysis (40m and 60m):
 - Two-panel subplot comparing different frequency bands
 - WA5FRF→AB5YO path on both 40m and 60m
 - Demonstrates multi-panel plotting capabilities
 
-### fig_13_14.ipynb
+### fig_13_14/fig_13_14.ipynb
+
 Generates Figures 13 and 14:
 - Analysis of WA5FRF→AB5YO and WA5FRF→N6RFM paths
 - Multi-mode TDOA processing (2F2-1F2, 1F2-1E, 2F2-1E)

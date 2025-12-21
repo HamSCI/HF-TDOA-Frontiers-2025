@@ -1,0 +1,4 @@
+include README.md
+include environment.yml
+include setup.py
+recursive-include hf_tdoa *.py

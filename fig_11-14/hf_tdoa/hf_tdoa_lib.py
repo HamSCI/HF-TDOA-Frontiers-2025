@@ -1194,7 +1194,7 @@ def load_ionosonde_data(csv_path):
     return ionosonde_df
 
 
-def overlay_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv',
+def overlay_ionosonde(ax, csv_path=None,
                       overlay_hmF2=True, overlay_hmE=True,
                       label='Austin Ionosonde',
                       hmF2_color='purple', hmE_color='brown'):
@@ -1205,7 +1205,7 @@ def overlay_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE
     ax : matplotlib.axes.Axes
         The axes object to plot on.
     csv_path : str, optional
-        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
+        Path to the ionosonde CSV file. If None, uses default path relative to package.
     overlay_hmF2 : bool, optional
         If True, overlay hmF2 data. Default is True.
     overlay_hmE : bool, optional
@@ -1217,6 +1217,12 @@ def overlay_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE
     hmE_color : str, optional
         Color for hmE line. Default is 'brown'.
     """
+    # If no path provided, use default relative to package root
+    if csv_path is None:
+        # Get the directory containing this file (hf_tdoa package directory)
+        package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv')
+
     ionosonde_df = load_ionosonde_data(csv_path)
 
     if overlay_hmF2:
