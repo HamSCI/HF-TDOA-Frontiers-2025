@@ -41,7 +41,6 @@ jupyter lab
 .
 ├── README.md                    # This file
 ├── environment.yml              # Conda environment specification
-├── hf_tdoa_lib.py              # Core analysis library
 ├── fig_11.ipynb                # Figure 11 analysis notebook
 ├── fig_12.ipynb                # Figure 12 analysis notebook
 ├── fig_13_14.ipynb             # Figures 13-14 analysis notebook
@@ -52,12 +51,22 @@ jupyter lab
 │   ├── TX_WA5FRF_EL09nn-RX_N6RFM_EM12jw-40m/
 │   └── CSVs/                   # Ionosonde and manual TDOA data
 ├── templates/                  # Reference chirp templates
-└── eclipse_calculator/         # Solar position and eclipse calculations
+└── hf_tdoa/                    # HF TDOA analysis package
+    ├── __init__.py             # Package initialization
+    ├── hf_tdoa_lib.py          # Core TDOA analysis library
+    ├── calcSun.py              # Solar position calculations
+    ├── eclipse_calc.py         # Eclipse obscuration calculations
+    ├── solarContext.py         # Solar context and overlays
+    ├── locator.py              # Grid square conversions
+    ├── geopack.py              # Geodetic calculations
+    ├── maps.py                 # Mapping utilities
+    ├── gen_lib.py              # General utilities
+    └── rayTracePaths.py        # Ray tracing functions
 ```
 
-## Core Library: hf_tdoa_lib.py
+## Core Package: hf_tdoa
 
-The `hf_tdoa_lib.py` module provides comprehensive functionality for HF TDOA analysis:
+The `hf_tdoa` package provides comprehensive functionality for HF TDOA analysis. All functions and classes are accessible via `import hf_tdoa` thanks to the pythonic package structure.
 
 ### Key Classes
 
@@ -70,7 +79,7 @@ Manages transmitter/receiver path information and calculations:
 
 **Example:**
 ```python
-import hf_tdoa_lib as tdoa
+import hf_tdoa as tdoa
 
 # Create PathInfo from a prefix string
 path_info = tdoa.PathInfo('TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m')
@@ -149,7 +158,7 @@ Generates Figures 13 and 14:
 
 ```python
 import os
-import hf_tdoa_lib as tdoa
+import hf_tdoa as tdoa
 
 # Setup plotting
 tdoa.setup_plotting_style()
@@ -255,7 +264,7 @@ The model coefficients are automatically computed from the path geometry using e
 ## Troubleshooting
 
 ### Import Errors
-If you encounter import errors with `eclipse_calculator`, ensure the conda environment is properly activated:
+If you encounter import errors with `hf_tdoa`, ensure the conda environment is properly activated:
 ```bash
 conda activate hf-tdoa
 ```

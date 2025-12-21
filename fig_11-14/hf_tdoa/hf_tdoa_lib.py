@@ -133,50 +133,50 @@ class PathInfo:
         import sys
         import types
 
-        # Try to find locator.py in eclipse_calculator directory
+        # Try to find locator.py in hf_tdoa package directory
         try:
-            # Get the directory of this file
+            # Get the directory of this file (hf_tdoa package)
             this_dir = os.path.dirname(os.path.abspath(__file__))
-            locator_path = os.path.join(this_dir, 'eclipse_calculator', 'locator.py')
-            geopack_path = os.path.join(this_dir, 'eclipse_calculator', 'geopack.py')
+            locator_path = os.path.join(this_dir, 'locator.py')
+            geopack_path = os.path.join(this_dir, 'geopack.py')
 
             if not os.path.exists(locator_path):
                 # Fallback: try relative import
                 try:
-                    from .eclipse_calculator import locator
+                    from . import locator
                     return locator
                 except ImportError:
-                    from eclipse_calculator import locator
+                    from hf_tdoa import locator
                     return locator
 
             # First load geopack into a fake package structure
-            geopack_spec = importlib.util.spec_from_file_location("eclipse_calculator.geopack", geopack_path)
+            geopack_spec = importlib.util.spec_from_file_location("hf_tdoa.geopack", geopack_path)
             geopack = importlib.util.module_from_spec(geopack_spec)
 
-            # Create a fake eclipse_calculator package if it doesn't exist
-            if 'eclipse_calculator' not in sys.modules:
-                eclipse_calculator_pkg = types.ModuleType('eclipse_calculator')
-                eclipse_calculator_pkg.__path__ = [os.path.join(this_dir, 'eclipse_calculator')]
-                eclipse_calculator_pkg.__package__ = 'eclipse_calculator'
-                sys.modules['eclipse_calculator'] = eclipse_calculator_pkg
+            # Create a fake hf_tdoa package if it doesn't exist
+            if 'hf_tdoa' not in sys.modules:
+                hf_tdoa_pkg = types.ModuleType('hf_tdoa')
+                hf_tdoa_pkg.__path__ = [this_dir]
+                hf_tdoa_pkg.__package__ = 'hf_tdoa'
+                sys.modules['hf_tdoa'] = hf_tdoa_pkg
 
             # Add geopack to sys.modules with package name
-            sys.modules['eclipse_calculator.geopack'] = geopack
+            sys.modules['hf_tdoa.geopack'] = geopack
             geopack_spec.loader.exec_module(geopack)
 
             # Now load locator with package context - it can now do "from . import geopack"
-            spec = importlib.util.spec_from_file_location("eclipse_calculator.locator", locator_path)
+            spec = importlib.util.spec_from_file_location("hf_tdoa.locator", locator_path)
             locator = importlib.util.module_from_spec(spec)
-            sys.modules['eclipse_calculator.locator'] = locator
+            sys.modules['hf_tdoa.locator'] = locator
             spec.loader.exec_module(locator)
             return locator
         except Exception:
             # Final fallback: try regular import
             try:
-                from .eclipse_calculator import locator
+                from . import locator
                 return locator
             except ImportError:
-                from eclipse_calculator import locator
+                from hf_tdoa import locator
                 return locator
 
     def get_tx_latlon(self):
@@ -233,19 +233,19 @@ class PathInfo:
         import importlib.util
         import os
 
-        # Try to find geopack.py in eclipse_calculator directory
+        # Try to find geopack.py in hf_tdoa package
         try:
-            # Get the directory of this file
+            # Get the directory of this file (hf_tdoa package)
             this_dir = os.path.dirname(os.path.abspath(__file__))
-            geopack_path = os.path.join(this_dir, 'eclipse_calculator', 'geopack.py')
+            geopack_path = os.path.join(this_dir, 'geopack.py')
 
             if not os.path.exists(geopack_path):
                 # Fallback: try relative import
                 try:
-                    from .eclipse_calculator import geopack
+                    from . import geopack
                     return geopack
                 except ImportError:
-                    from eclipse_calculator import geopack
+                    from hf_tdoa import geopack
                     return geopack
 
             # Load module directly to avoid __init__.py astropy import
@@ -256,10 +256,10 @@ class PathInfo:
         except Exception:
             # Final fallback: try regular import
             try:
-                from .eclipse_calculator import geopack
+                from . import geopack
                 return geopack
             except ImportError:
-                from eclipse_calculator import geopack
+                from hf_tdoa import geopack
                 return geopack
 
     def get_path_azimuth(self):
@@ -1409,7 +1409,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
             print('WARNING: solar_lat and solar_lon must be provided for solar overlays.')
         else:
             try:
-                from eclipse_calculator import solarContext
+                from . import solarContext
 
                 # Set default times based on x-axis limits if not provided
                 if solar_start is None or solar_end is None:
