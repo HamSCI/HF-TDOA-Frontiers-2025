@@ -18,6 +18,47 @@ import pandas as pd
 from tqdm import tqdm
 
 
+# ============================================================================
+# Utility Functions for Reducing Code Duplication
+# ============================================================================
+
+def _ensure_scalar(value):
+    """
+    Convert numpy array to scalar if needed.
+
+    Parameters:
+    -----------
+    value : float or np.ndarray
+        Value that may be a scalar or numpy array
+
+    Returns:
+    --------
+    float
+        Scalar value
+    """
+    if not np.isscalar(value):
+        return float(value.item())
+    return float(value)
+
+
+def _format_datetime_axis(ax, time_format='%H:%M', interval_minutes=15):
+    """
+    Format datetime x-axis with consistent styling.
+
+    Parameters:
+    -----------
+    ax : matplotlib.axes.Axes
+        The axes object to format
+    time_format : str, optional
+        strftime format string for time labels (default: '%H:%M')
+    interval_minutes : int, optional
+        Interval in minutes for major tick marks (default: 15)
+    """
+    myFmt = mdates.DateFormatter(time_format)
+    ax.xaxis.set_major_formatter(myFmt)
+    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=interval_minutes))
+
+
 # Mode-specific configuration parameters
 # Each mode includes filter limits, search limits, and plotting parameters
 MODE_CONFIGS = {
@@ -190,9 +231,7 @@ class PathInfo:
         """
         locator = self._import_locator()
         lat, lon = locator.gridsquare2latlon(self.tx_grid, position='center')
-        if not np.isscalar(lat):
-            lat, lon = float(lat.item()), float(lon.item())
-        return (lat, lon)
+        return (_ensure_scalar(lat), _ensure_scalar(lon))
 
     def get_rx_latlon(self):
         """
@@ -205,9 +244,7 @@ class PathInfo:
         """
         locator = self._import_locator()
         lat, lon = locator.gridsquare2latlon(self.rx_grid, position='center')
-        if not np.isscalar(lat):
-            lat, lon = float(lat.item()), float(lon.item())
-        return (lat, lon)
+        return (_ensure_scalar(lat), _ensure_scalar(lon))
 
     def get_midpoint(self):
         """
@@ -1153,18 +1190,14 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
         lgnd = ax.legend(handles=[line], loc=(xpos, ypos))
         ax.add_artist(lgnd)
 
-    myFmt = mdates.DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(myFmt)
-    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
+    _format_datetime_axis(ax)
 
     ax.set_ylabel('TDOA [ms]')
     ax.set_xlabel('Time UTC')
     fig.autofmt_xdate()
 
-    # Use path_info if available, otherwise fall back to pfx string for backward compatibility
-    path_info = chirps.attrs.get('path_info', None)
-    if path_info is None:
-        path_info = chirps.attrs.get('pfx', '')
+    # Use path_info from attrs
+    path_info = chirps.attrs['path_info']
     title_from_pfx(ax, path_info, times[0])
 
     plt.tight_layout()
@@ -1400,9 +1433,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
 
     ax.set_ylim(ylim)
 
-    myFmt = mdates.DateFormatter('%H:%M')
-    ax.xaxis.set_major_formatter(myFmt)
-    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=15))
+    _format_datetime_axis(ax)
     ax.set_ylabel('Layer Height [km]')
     ax.set_xlabel('Time UTC')
 
@@ -1453,10 +1484,8 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
 
     ax.legend()
 
-    # Use path_info for title
-    path_info = chirps.attrs.get('path_info', None)
-    if path_info is None:
-        path_info = chirps.attrs.get('pfx', '')
+    # Use path_info from attrs
+    path_info = chirps.attrs['path_info']
 
     # Show date if requested
     date = times.iloc[0] if show_date else None

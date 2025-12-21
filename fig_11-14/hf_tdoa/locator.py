@@ -315,23 +315,20 @@ def gridsquare_midpoint(gridsquare1, gridsquare2):
     tuple
         (midpoint_lat, midpoint_lon) in degrees
     """
+    def _ensure_scalar(value):
+        """Convert numpy array to scalar if needed."""
+        if not np.isscalar(value):
+            return float(value.item())
+        return float(value)
+
     lat1, lon1 = gridsquare2latlon(gridsquare1, position='center')
     lat2, lon2 = gridsquare2latlon(gridsquare2, position='center')
 
-    # Handle scalar or array returns
-    if np.isscalar(lat1):
-        lat1, lon1 = float(lat1), float(lon1)
-        lat2, lon2 = float(lat2), float(lon2)
-    else:
-        lat1, lon1 = float(lat1.item()), float(lon1.item())
-        lat2, lon2 = float(lat2.item()), float(lon2.item())
+    # Ensure all values are scalars
+    lat1, lon1 = _ensure_scalar(lat1), _ensure_scalar(lon1)
+    lat2, lon2 = _ensure_scalar(lat2), _ensure_scalar(lon2)
 
     # Use geopack's great circle midpoint calculation
     midpoint_lat, midpoint_lon = geopack.midpoint(lat1, lon1, lat2, lon2)
 
-    # Handle numpy array returns from geopack.midpoint
-    if not np.isscalar(midpoint_lat):
-        midpoint_lat = float(midpoint_lat.item())
-        midpoint_lon = float(midpoint_lon.item())
-
-    return (midpoint_lat, midpoint_lon)
+    return (_ensure_scalar(midpoint_lat), _ensure_scalar(midpoint_lon))
