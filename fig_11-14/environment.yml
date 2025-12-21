@@ -15,3 +15,6 @@ dependencies:
   - jupyterlab
   - pydub
   - tqdm
+  - pillow
+  - scikit-image
+  - nbconvert
