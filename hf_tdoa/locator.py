@@ -299,6 +299,48 @@ def grid_latlons(precision=4,position='center'):
     lat_lons    = gridsquare2latlon(gs_grid,position=position)
     return lat_lons
 
+def grid_range_km(gridsquare1, gridsquare2, Re=6371.0):
+    """
+    Calculate the great circle distance between two grid squares of arbitrary precision.
+    Calculation is based on the center of each grid square.
+
+    Parameters
+    ----------
+    gridsquare1 : str
+        First gridsquare (arbitrary precision)
+    gridsquare2 : str
+        Second gridsquare (arbitrary precision)
+    Re : float, optional
+        Earth radius in km (default: 6371.0)
+
+    Returns
+    -------
+    float
+        Distance in kilometers
+    """
+    def _ensure_scalar(value):
+        """Convert numpy array to scalar if needed."""
+        if not np.isscalar(value):
+            return float(value.item())
+        return float(value)
+
+    # Get center coordinates for both grid squares
+    lat1, lon1 = gridsquare2latlon(gridsquare1, position='center')
+    lat2, lon2 = gridsquare2latlon(gridsquare2, position='center')
+
+    # Ensure all values are scalars
+    lat1, lon1 = _ensure_scalar(lat1), _ensure_scalar(lon1)
+    lat2, lon2 = _ensure_scalar(lat2), _ensure_scalar(lon2)
+
+    # Use geopack's great circle distance calculation
+    dist_rad = geopack.greatCircleDist(lat1, lon1, lat2, lon2)
+
+    # Convert to kilometers using Earth radius
+    dist_km = dist_rad * Re
+
+    return dist_km
+
+
 def gridsquare_midpoint(gridsquare1, gridsquare2):
     """
     Calculate the great circle midpoint (lat, lon) given two gridsquares.

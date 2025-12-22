@@ -331,14 +331,9 @@ class PathInfo:
         float
             Distance in kilometers
         """
-        geopack = self._import_geopack()
-        tx_lat, tx_lon = self.get_tx_latlon()
-        rx_lat, rx_lon = self.get_rx_latlon()
-        # greatCircleDist returns distance in radians
-        dist_rad = geopack.greatCircleDist(tx_lat, tx_lon, rx_lat, rx_lon)
-        # Convert to kilometers using Earth radius
-        Re = 6371.0  # Earth radius in km
-        dist_km = dist_rad * Re
+        locator = self._import_locator()
+        # Use the grid_range_km function from locator module
+        dist_km = locator.grid_range_km(self.tx_grid, self.rx_grid, Re=6371.0)
         return dist_km
 
     def calculate_path_length(self, n_hops, layer_height):
