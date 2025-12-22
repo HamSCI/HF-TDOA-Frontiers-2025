@@ -1430,7 +1430,8 @@ def overlay_tdoa_csv(ax, csv_path, model_coeffs,
 def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
                        solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                        overlay_solar_elevation=False, overlay_eclipse=False,
-                       ionosonde_dct=None, tdoa_csv_dct=None, show_date=True):
+                       ionosonde_dct=None, tdoa_csv_dct=None, show_date=True,
+                       legend_loc='best', legend_fontsize=None):
     """
     Internal helper function to plot HF TDOA layer heights on a given axis.
 
@@ -1463,6 +1464,11 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
         Dictionary containing parameters to pass to overlay_tdoa_csv().
     show_date : bool, optional
         If True, show date in the title. Default is True.
+    legend_loc : str, optional
+        Legend location. Default is 'best'. Can be 'upper left', 'upper right', 'lower left',
+        'lower right', 'center', 'best', etc.
+    legend_fontsize : int or str, optional
+        Legend font size. If None, uses matplotlib default. Can be int or 'small', 'medium', 'large', etc.
     """
     times = chirps['utc']
 
@@ -1530,7 +1536,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
             except (ImportError, AttributeError) as e:
                 print(f'WARNING: Cannot overlay solar data. Error: {e}')
 
-    ax.legend()
+    ax.legend(loc=legend_loc, fontsize=legend_fontsize)
 
     # Use path_info from attrs
     path_info = chirps.attrs['path_info']
@@ -1629,7 +1635,8 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
 def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350), xlim=None,
                       solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                       overlay_solar_elevation=False, overlay_eclipse=False,
-                      ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16), savefig=None):
+                      ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16), savefig=None,
+                      legend_loc='best', legend_fontsize=None):
     """
     Creates a multi-panel subplot figure with layer heights from multiple datasets.
 
