@@ -1166,7 +1166,7 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
     return tdoa_dct
 
 
-def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True):
+def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True, legend_offset=-0.06):
     """
     Internal helper function to plot TDOA measurements on a given axis.
 
@@ -1183,6 +1183,9 @@ def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True):
         Y-axis limits for the plot. Default is (0, 3).
     show_date : bool, optional
         If True, show date in the title. Default is True.
+    legend_offset : float, optional
+        Vertical offset for legend position as fraction of axis height. Default is -0.06.
+        More negative values move the legend down.
     """
     times = chirps['utc']
 
@@ -1211,7 +1214,7 @@ def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True):
         xpos = lgnd['xpos']
         ypos = lgnd['ypos']
         ypos = (ypos - ylim_actual[0]) / (ylim_actual[1] - ylim_actual[0])  # Convert to fraction of axis height
-        ypos = ypos - 0.06  # Nudge legend down a bit
+        ypos = ypos + legend_offset  # Nudge legend down
         legend = ax.legend(handles=[line], loc=(xpos, ypos))
         ax.add_artist(legend)
 
@@ -1730,6 +1733,7 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
 
 def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
                            ylim_tdoa=(0, 5), ylim_hmf2=(200, 350), xlim=None,
+                           legend_offset=-0.06,
                            solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                            overlay_solar_elevation=False, overlay_eclipse=False,
                            ionosonde_dct=None, tdoa_csv_dct=None,
@@ -1755,6 +1759,9 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
     xlim : tuple of datetime.datetime, optional
         X-axis limits (start_time, end_time) applied to both TDOA and layer height plots.
         If None, uses the full time range from the data.
+    legend_offset : float, optional
+        Vertical offset for TDOA legend position as fraction of axis height. Default is -0.06.
+        More negative values move the legend down. Use this to avoid overlap with data.
     solar_lat : float, optional
         Latitude for solar calculations (degrees, +N/-S).
     solar_lon : float, optional
@@ -1803,7 +1810,7 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
     ax_hmf2 = axes[1]
 
     # Plot (a): TDOA measurements using the helper function
-    _plot_tdoa_on_axis(ax_tdoa, chirps, tdoa_dct, ylim=ylim_tdoa, show_date=True)
+    _plot_tdoa_on_axis(ax_tdoa, chirps, tdoa_dct, ylim=ylim_tdoa, show_date=True, legend_offset=legend_offset)
 
     # Plot (b): Layer heights using the helper function
     _plot_hmf2_on_axis(
