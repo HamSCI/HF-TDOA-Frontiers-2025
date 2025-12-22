@@ -1157,6 +1157,68 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
     return tdoa_dct
 
 
+def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True):
+    """
+    Internal helper function to plot TDOA measurements on a given axis.
+
+    This function is used by both plot_TDOAs() and plot_tdoa_hmf2_subplot() to avoid code duplication.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    chirps : pd.DataFrame
+        DataFrame containing chirp data and TDOA measurements.
+    tdoa_dct : dict
+        Dictionary containing TDOA set configurations with plotting parameters.
+    ylim : tuple, optional
+        Y-axis limits for the plot. Default is (0, 3).
+    show_date : bool, optional
+        If True, show date in the title. Default is True.
+    """
+    times = chirps['utc']
+
+    lgnds = []
+    for set_name, params in tdoa_dct.items():
+        TDOAs = chirps[f'{set_name}_mean']
+        line, = ax.plot(times, TDOAs,
+                label=set_name,
+                marker=params.get('marker', 'o'),
+                linestyle=params.get('linestyle'),
+                linewidth=params.get('linewidth'),
+                color=params.get('color'))
+
+        lgnd = {}
+        lgnd['line'] = line
+        lgnd['xpos'] = 0.01
+        lgnd['ypos'] = np.nanmin(TDOAs)
+        lgnds.append(lgnd)
+
+    ax.set_ylim(ylim)
+
+    # Add a Legend Under Each Trace
+    ylim_actual = ax.get_ylim()
+    for lgnd in lgnds:
+        line = lgnd['line']
+        xpos = lgnd['xpos']
+        ypos = lgnd['ypos']
+        ypos = (ypos - ylim_actual[0]) / (ylim_actual[1] - ylim_actual[0])  # Convert to fraction of axis height
+        ypos = ypos - 0.06  # Nudge legend down a bit
+        legend = ax.legend(handles=[line], loc=(xpos, ypos))
+        ax.add_artist(legend)
+
+    _format_datetime_axis(ax)
+
+    ax.set_ylabel('TDOA [ms]')
+    ax.set_xlabel('Time UTC')
+
+    # Use path_info from attrs
+    path_info = chirps.attrs['path_info']
+
+    # Show date if requested
+    date = times.iloc[0] if show_date else None
+    title_from_pfx(ax, path_info, date)
+
+
 def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
     """
     Plots TDOA measurements over time for multiple propagation modes.
@@ -1172,49 +1234,13 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
         If provided, saves the figure to this file path. High-resolution JPEG recommended.
         If None (default), figure is not saved to disk.
     """
-    times = chirps['utc']
-    fig   = plt.figure(figsize=(16, 9))
-    ax    = fig.add_subplot(1, 1, 1)
+    fig = plt.figure(figsize=(16, 9))
+    ax = fig.add_subplot(1, 1, 1)
 
-    lgnds = []
-    for set_name, params in tdoa_dct.items():
-        TDOAs = chirps[f'{set_name}_mean']
-        line, = ax.plot(times, TDOAs,
-                label=set_name,
-                marker = params.get('marker', 'o'),
-                linestyle=params.get('linestyle'),
-                linewidth=params.get('linewidth'),
-                color=params.get('color'))
+    # Use the shared helper function to do all the plotting
+    _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=ylim, show_date=True)
 
-        lgnd = {}
-        lgnd['line'] = line
-        lgnd['xpos'] = 0.01
-        lgnd['ypos'] = np.nanmin(TDOAs)
-        lgnds.append(lgnd)
-
-    ax.set_ylim(ylim)
-
-    # Add a Legend Under Each Trace
-    ylim = ax.get_ylim()
-    for lgnd in lgnds:
-        line = lgnd['line']
-        xpos = lgnd['xpos']
-        ypos = lgnd['ypos']
-        ypos = (ypos-ylim[0]) / (ylim[1]-ylim[0]) # Convert to fraction of axis height
-        ypos = ypos - 0.06 # Nudge legend down a bit
-        lgnd = ax.legend(handles=[line], loc=(xpos, ypos))
-        ax.add_artist(lgnd)
-
-    _format_datetime_axis(ax)
-
-    ax.set_ylabel('TDOA [ms]')
-    ax.set_xlabel('Time UTC')
     fig.autofmt_xdate()
-
-    # Use path_info from attrs
-    path_info = chirps.attrs['path_info']
-    title_from_pfx(ax, path_info, times[0])
-
     plt.tight_layout()
 
     # Save figure if filename provided
@@ -1670,6 +1696,101 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
                 fontsize=30, fontweight='bold', va='top', ha='left')
 
         # Rotate x-axis labels
+        for tick_label in ax.get_xticklabels():
+            tick_label.set_rotation(45)
+            tick_label.set_horizontalalignment('right')
+
+    plt.tight_layout()
+    plt.subplots_adjust(hspace=0.3)
+
+    # Save figure if filename provided
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300, bbox_inches='tight', format='jpeg', pil_kwargs={'quality': 95})
+        print(f"Figure saved to: {savefig}")
+
+    plt.show()
+    plt.close(fig)
+
+
+def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
+                           ylim_tdoa=(0, 5), ylim_hmf2=(200, 350),
+                           solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
+                           overlay_solar_elevation=False, overlay_eclipse=False,
+                           ionosonde_dct=None, tdoa_csv_dct=None,
+                           figsize=(15, 16), savefig=None):
+    """
+    Creates a two-panel subplot figure with TDOA measurements (top) and layer heights (bottom).
+
+    This is useful for creating figures that show both raw TDOA measurements and the
+    derived layer heights in a single combined figure.
+
+    Arguments:
+    chirps : pd.DataFrame
+        DataFrame containing chirp data and TDOA measurements.
+    tdoa_dct : dict
+        Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
+    subplot_labels : list of str, optional
+        Labels for each subplot (e.g., ['(a)', '(b)']). If None, uses (a), (b).
+    ylim_tdoa : tuple, optional
+        Y-axis limits for TDOA plot. Default is (0, 5).
+    ylim_hmf2 : tuple, optional
+        Y-axis limits for layer height plot. Default is (200, 350).
+    solar_lat : float, optional
+        Latitude for solar calculations (degrees, +N/-S).
+    solar_lon : float, optional
+        Longitude for solar calculations (degrees, +E/-W).
+    solar_start : datetime.datetime, optional
+        Start time for solar calculations.
+    solar_end : datetime.datetime, optional
+        End time for solar calculations.
+    overlay_solar_elevation : bool, optional
+        If True, overlay solar elevation angle on hmf2 plot. Default is False.
+    overlay_eclipse : bool, optional
+        If True, overlay eclipse obscuration on hmf2 plot. Default is False.
+    ionosonde_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_ionosonde() for hmf2 plot.
+    tdoa_csv_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_tdoa_csv() for hmf2 plot.
+    figsize : tuple, optional
+        Figure size (width, height). Default is (15, 16).
+    savefig : str, optional
+        If provided, saves the figure to this file path. High-resolution JPEG recommended.
+        If None (default), figure is not saved to disk.
+    """
+    import datetime
+
+    if subplot_labels is None:
+        subplot_labels = ['(a)', '(b)']
+
+    fig, axes = plt.subplots(2, 1, figsize=figsize)
+    ax_tdoa = axes[0]
+    ax_hmf2 = axes[1]
+
+    # Plot (a): TDOA measurements using the helper function
+    _plot_tdoa_on_axis(ax_tdoa, chirps, tdoa_dct, ylim=ylim_tdoa, show_date=True)
+
+    # Add subplot label (a)
+    ax_tdoa.text(-0.08, 1.075, subplot_labels[0], transform=ax_tdoa.transAxes,
+                fontsize=30, fontweight='bold', va='top', ha='left')
+
+    # Plot (b): Layer heights using the helper function
+    _plot_hmf2_on_axis(
+        ax_hmf2, chirps, tdoa_dct, ylim=ylim_hmf2,
+        solar_lat=solar_lat, solar_lon=solar_lon,
+        solar_start=solar_start, solar_end=solar_end,
+        overlay_solar_elevation=overlay_solar_elevation,
+        overlay_eclipse=overlay_eclipse,
+        ionosonde_dct=ionosonde_dct,
+        tdoa_csv_dct=tdoa_csv_dct,
+        show_date=True
+    )
+
+    # Add subplot label (b)
+    ax_hmf2.text(-0.08, 1.075, subplot_labels[1], transform=ax_hmf2.transAxes,
+                fontsize=30, fontweight='bold', va='top', ha='left')
+
+    # Rotate x-axis labels for both subplots
+    for ax in axes:
         for tick_label in ax.get_xticklabels():
             tick_label.set_rotation(45)
             tick_label.set_horizontalalignment('right')
