@@ -687,7 +687,7 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     wav_data = []
 
     # Use tqdm progress bar for file processing
-    pbar = tqdm(wavlist, desc="Finding chirps", unit="file", disable=plot_correlation)
+    pbar = tqdm(wavlist, desc="Finding chirps", unit="file", disable=plot_correlation, dynamic_ncols=True)
 
     for file in pbar:
         bname   = os.path.basename(file)
@@ -1015,7 +1015,7 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     # Use tqdm progress bar for file processing
     pbar = tqdm(wav_data.iterrows(), total=len(wav_data),
                 desc=f"Finding TDOAs ({mode_string})",
-                unit="file", disable=only_one)
+                unit="file", disable=only_one, dynamic_ncols=True)
 
     for file_num, row in pbar:
         maxes = []

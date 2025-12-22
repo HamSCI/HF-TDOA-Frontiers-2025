@@ -67,7 +67,7 @@ class NotebookFigureTester:
             print(f"  Executing notebook: {notebook_path.name}")
 
             # Start progress bar in a separate thread
-            pbar = tqdm(total=100, desc="  Progress", bar_format='{desc}: {bar} {elapsed}', leave=False)
+            pbar = tqdm(total=100, desc="  Progress", bar_format='{desc}: {bar} {elapsed}', leave=False, dynamic_ncols=True)
             stop_event = threading.Event()
 
             def update_progress():
