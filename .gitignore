@@ -31,3 +31,4 @@ dist/
 .mplconfig_test/
 
 .claude
+temp/

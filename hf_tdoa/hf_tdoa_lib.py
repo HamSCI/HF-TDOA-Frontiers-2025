@@ -62,25 +62,33 @@ def _format_datetime_axis(ax, time_format='%H:%M', interval_minutes=15):
 # Mode-specific configuration parameters
 # Each mode includes filter limits, search limits, and plotting parameters
 MODE_CONFIGS = {
+    '3F2-1F2': {
+        'filter_limts': [10, 50],               # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 25, 50],   # (start_offset, end_offset, min_freq, max_freq)
+        'linestyle': '-.',
+        'linewidth': 3,
+        'color': 'mediumblue',
+        'marker': 'v'
+    },
     '2F2-1F2': {
-        'filter_limts': [10, 50],           # Bandpass filter limits [Hz]
-        'search_limits': [-0.1, 0.1, 11, 20],  # (start_offset, end_offset, min_freq, max_freq)
+        'filter_limts': [10, 50],               # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 11, 20],   # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': '--',
         'linewidth': 3,
         'color': 'tab:green',
         'marker': 'o'
     },
     '1F2-1E': {
-        'filter_limts': [2.5, 30],          # Bandpass filter limits [Hz]
-        'search_limits': [-0.1, 0.1, 5, 12],  # (start_offset, end_offset, min_freq, max_freq)
+        'filter_limts': [2.5, 30],              # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 5, 12],    # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': '-.',
         'linewidth': 1.5,
         'color': 'tab:blue',
         'marker': '*'
     },
     '2F2-1E': {
-        'filter_limts': [20, 30],           # Bandpass filter limits [Hz]
-        'search_limits': [-0.1, 0.1, 22, 30],  # (start_offset, end_offset, min_freq, max_freq)
+        'filter_limts': [20, 30],               # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 22, 30],   # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': ':',
         'linewidth': 2.5,
         'color': 'tab:orange',
@@ -323,14 +331,9 @@ class PathInfo:
         float
             Distance in kilometers
         """
-        geopack = self._import_geopack()
-        tx_lat, tx_lon = self.get_tx_latlon()
-        rx_lat, rx_lon = self.get_rx_latlon()
-        # greatCircleDist returns distance in radians
-        dist_rad = geopack.greatCircleDist(tx_lat, tx_lon, rx_lat, rx_lon)
-        # Convert to kilometers using Earth radius
-        Re = 6371.0  # Earth radius in km
-        dist_km = dist_rad * Re
+        locator = self._import_locator()
+        # Use the grid_range_km function from locator module
+        dist_km = locator.grid_range_km(self.tx_grid, self.rx_grid, Re=6371.0)
         return dist_km
 
     def calculate_path_length(self, n_hops, layer_height):
@@ -684,7 +687,7 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     wav_data = []
 
     # Use tqdm progress bar for file processing
-    pbar = tqdm(wavlist, desc="Finding chirps", unit="file", disable=plot_correlation)
+    pbar = tqdm(wavlist, desc="Finding chirps", unit="file", disable=plot_correlation, dynamic_ncols=True)
 
     for file in pbar:
         bname   = os.path.basename(file)
@@ -1012,7 +1015,7 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     # Use tqdm progress bar for file processing
     pbar = tqdm(wav_data.iterrows(), total=len(wav_data),
                 desc=f"Finding TDOAs ({mode_string})",
-                unit="file", disable=only_one)
+                unit="file", disable=only_one, dynamic_ncols=True)
 
     for file_num, row in pbar:
         maxes = []
@@ -1064,7 +1067,7 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     return wav_data
 
 
-def title_from_pfx(ax, pfx, date=None):
+def title_from_pfx(ax, pfx, date=None, center_title=None):
     """
     Creates a formatted title for plots based on the prefix string.
 
@@ -1075,6 +1078,9 @@ def title_from_pfx(ax, pfx, date=None):
         Prefix string containing TX/RX station information, or a PathInfo object.
     date : datetime.datetime, optional
         Date to display in the center title.
+    center_title : str, optional
+        Custom text to display above the date in the center title (e.g., 'TDOA' or 'Ionospheric Layer Height').
+        If provided, creates a two-line center title with this text on top and the date below.
     """
     # Accept either a string or a PathInfo object
     if isinstance(pfx, str):
@@ -1091,7 +1097,13 @@ def title_from_pfx(ax, pfx, date=None):
 
     if date is not None:
         date_str = date.strftime('%Y %b %d')
-        ax.set_title(date_str, loc='center', fontsize=34)
+        if center_title is not None:
+            # Two-line center title with custom text on top and date below
+            center_text = f'{center_title}\n{date_str}'
+        else:
+            # Just the date
+            center_text = date_str
+        ax.set_title(center_text, loc='center', fontsize=26)
 
 
 def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
@@ -1105,7 +1117,8 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
         DataFrame containing chirp data. Must have 'path_info' in attrs.
     mode_strings : list of str, optional
         List of mode strings to include in the configuration (e.g., ['2F2-1F2', '1F2-1E']).
-        If None, includes all modes defined in MODE_CONFIGS.
+        If None, automatically detects which modes have been processed by checking for
+        columns with '_mean' suffix in the chirps DataFrame.
     **mode_overrides : dict, optional
         Override parameters for specific modes. Use mode_string as key with a dict of parameters.
         Example: build_tdoa_config(chirps, **{'2F2-1F2': {'color': 'red', 'linewidth': 5}})
@@ -1119,7 +1132,13 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
         raise ValueError("chirps must have 'path_info' in attrs")
 
     if mode_strings is None:
-        mode_strings = list(MODE_CONFIGS.keys())
+        # Auto-detect which modes have been processed by checking for columns ending with '_mean'
+        mode_strings = []
+        for col in chirps.columns:
+            if col.endswith('_mean'):
+                mode_name = col[:-5]  # Remove '_mean' suffix
+                if mode_name in MODE_CONFIGS:
+                    mode_strings.append(mode_name)
 
     tdoa_dct = {}
     for mode_string in mode_strings:
@@ -1142,6 +1161,71 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
     return tdoa_dct
 
 
+def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True, legend_offset=-0.06):
+    """
+    Internal helper function to plot TDOA measurements on a given axis.
+
+    This function is used by both plot_TDOAs() and plot_tdoa_hmf2_subplot() to avoid code duplication.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    chirps : pd.DataFrame
+        DataFrame containing chirp data and TDOA measurements.
+    tdoa_dct : dict
+        Dictionary containing TDOA set configurations with plotting parameters.
+    ylim : tuple, optional
+        Y-axis limits for the plot. Default is (0, 3).
+    show_date : bool, optional
+        If True, show date in the title. Default is True.
+    legend_offset : float, optional
+        Vertical offset for legend position as fraction of axis height. Default is -0.06.
+        More negative values move the legend down.
+    """
+    times = chirps['utc']
+
+    lgnds = []
+    for set_name, params in tdoa_dct.items():
+        TDOAs = chirps[f'{set_name}_mean']
+        line, = ax.plot(times, TDOAs,
+                label=set_name,
+                marker=params.get('marker', 'o'),
+                linestyle=params.get('linestyle'),
+                linewidth=params.get('linewidth'),
+                color=params.get('color'))
+
+        lgnd = {}
+        lgnd['line'] = line
+        lgnd['xpos'] = 0.01
+        lgnd['ypos'] = np.nanmin(TDOAs)
+        lgnds.append(lgnd)
+
+    ax.set_ylim(ylim)
+
+    # Add a Legend Under Each Trace
+    ylim_actual = ax.get_ylim()
+    for lgnd in lgnds:
+        line = lgnd['line']
+        xpos = lgnd['xpos']
+        ypos = lgnd['ypos']
+        ypos = (ypos - ylim_actual[0]) / (ylim_actual[1] - ylim_actual[0])  # Convert to fraction of axis height
+        ypos = ypos + legend_offset  # Nudge legend down
+        legend = ax.legend(handles=[line], loc=(xpos, ypos))
+        ax.add_artist(legend)
+
+    _format_datetime_axis(ax)
+
+    ax.set_ylabel('TDOA [ms]')
+    ax.set_xlabel('Time UTC')
+
+    # Use path_info from attrs
+    path_info = chirps.attrs['path_info']
+
+    # Show date if requested
+    date = times.iloc[0] if show_date else None
+    title_from_pfx(ax, path_info, date, center_title='TDOA')
+
+
 def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
     """
     Plots TDOA measurements over time for multiple propagation modes.
@@ -1157,49 +1241,13 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
         If provided, saves the figure to this file path. High-resolution JPEG recommended.
         If None (default), figure is not saved to disk.
     """
-    times = chirps['utc']
-    fig   = plt.figure(figsize=(16, 9))
-    ax    = fig.add_subplot(1, 1, 1)
+    fig = plt.figure(figsize=(16, 9))
+    ax = fig.add_subplot(1, 1, 1)
 
-    lgnds = []
-    for set_name, params in tdoa_dct.items():
-        TDOAs = chirps[f'{set_name}_mean']
-        line, = ax.plot(times, TDOAs,
-                label=set_name,
-                marker = params.get('marker', 'o'),
-                linestyle=params.get('linestyle'),
-                linewidth=params.get('linewidth'),
-                color=params.get('color'))
+    # Use the shared helper function to do all the plotting
+    _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=ylim, show_date=True)
 
-        lgnd = {}
-        lgnd['line'] = line
-        lgnd['xpos'] = 0.01
-        lgnd['ypos'] = np.nanmin(TDOAs)
-        lgnds.append(lgnd)
-
-    ax.set_ylim(ylim)
-
-    # Add a Legend Under Each Trace
-    ylim = ax.get_ylim()
-    for lgnd in lgnds:
-        line = lgnd['line']
-        xpos = lgnd['xpos']
-        ypos = lgnd['ypos']
-        ypos = (ypos-ylim[0]) / (ylim[1]-ylim[0]) # Convert to fraction of axis height
-        ypos = ypos - 0.06 # Nudge legend down a bit
-        lgnd = ax.legend(handles=[line], loc=(xpos, ypos))
-        ax.add_artist(lgnd)
-
-    _format_datetime_axis(ax)
-
-    ax.set_ylabel('TDOA [ms]')
-    ax.set_xlabel('Time UTC')
     fig.autofmt_xdate()
-
-    # Use path_info from attrs
-    path_info = chirps.attrs['path_info']
-    title_from_pfx(ax, path_info, times[0])
-
     plt.tight_layout()
 
     # Save figure if filename provided
@@ -1382,7 +1430,8 @@ def overlay_tdoa_csv(ax, csv_path, model_coeffs,
 def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
                        solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                        overlay_solar_elevation=False, overlay_eclipse=False,
-                       ionosonde_dct=None, tdoa_csv_dct=None, show_date=True):
+                       ionosonde_dct=None, tdoa_csv_dct=None, show_date=True,
+                       legend_loc='best', legend_fontsize=None):
     """
     Internal helper function to plot HF TDOA layer heights on a given axis.
 
@@ -1415,6 +1464,11 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
         Dictionary containing parameters to pass to overlay_tdoa_csv().
     show_date : bool, optional
         If True, show date in the title. Default is True.
+    legend_loc : str, optional
+        Legend location. Default is 'best'. Can be 'upper left', 'upper right', 'lower left',
+        'lower right', 'center', 'best', etc.
+    legend_fontsize : int or str, optional
+        Legend font size. If None, uses matplotlib default. Can be int or 'small', 'medium', 'large', etc.
     """
     times = chirps['utc']
 
@@ -1482,14 +1536,14 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
             except (ImportError, AttributeError) as e:
                 print(f'WARNING: Cannot overlay solar data. Error: {e}')
 
-    ax.legend()
+    ax.legend(loc=legend_loc, fontsize=legend_fontsize)
 
     # Use path_info from attrs
     path_info = chirps.attrs['path_info']
 
     # Show date if requested
     date = times.iloc[0] if show_date else None
-    title_from_pfx(ax, path_info, date)
+    title_from_pfx(ax, path_info, date, center_title='Ionospheric Layer Height')
 
 
 def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
@@ -1578,10 +1632,11 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
     plt.close(fig)
 
 
-def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350),
+def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350), xlim=None,
                       solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                       overlay_solar_elevation=False, overlay_eclipse=False,
-                      ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16), savefig=None):
+                      ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16), savefig=None,
+                      legend_loc='best', legend_fontsize=None):
     """
     Creates a multi-panel subplot figure with layer heights from multiple datasets.
 
@@ -1596,6 +1651,9 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
         Labels for each subplot (e.g., ['(a)', '(b)']). If None, uses (a), (b), (c), etc.
     ylim : tuple, optional
         Y-axis limits for all plots. Default is (200, 350).
+    xlim : tuple of datetime.datetime, optional
+        X-axis limits (start_time, end_time) applied to all subplots.
+        If None, uses the full time range from the data.
     solar_lat : float, optional
         Latitude for solar calculations (degrees, +N/-S).
     solar_lon : float, optional
@@ -1617,6 +1675,12 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
     savefig : str, optional
         If provided, saves the figure to this file path. High-resolution JPEG recommended.
         If None (default), figure is not saved to disk.
+    legend_loc : str, optional
+        Legend location for all subplots. Default is 'best'. Can be 'upper left', 'upper right',
+        'lower left', 'lower right', 'center', 'best', etc.
+    legend_fontsize : int or str, optional
+        Legend font size for all subplots. If None, uses matplotlib default.
+        Can be int or 'small', 'medium', 'large', etc.
     """
     import datetime
 
@@ -1646,8 +1710,14 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
             overlay_eclipse=overlay_eclipse,
             ionosonde_dct=ionosonde_dct,
             tdoa_csv_dct=tdoa_csv_dct,
-            show_date=True
+            show_date=True,
+            legend_loc=legend_loc,
+            legend_fontsize=legend_fontsize
         )
+
+        # Set x-axis limits if specified
+        if xlim is not None:
+            ax.set_xlim(xlim)
 
         # Add subplot label (a), (b), etc. using ax.text outside the axes
         # Position it in axes coordinates - outside upper left corner
@@ -1661,6 +1731,143 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
 
     plt.tight_layout()
     plt.subplots_adjust(hspace=0.3)
+
+    # Save figure if filename provided
+    if savefig is not None:
+        plt.savefig(savefig, dpi=300, bbox_inches='tight', format='jpeg', pil_kwargs={'quality': 95})
+        print(f"Figure saved to: {savefig}")
+
+    plt.show()
+    plt.close(fig)
+
+
+def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
+                           ylim_tdoa=(0, 5), ylim_hmf2=(200, 350), xlim=None,
+                           legend_offset=-0.06,
+                           solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
+                           overlay_solar_elevation=False, overlay_eclipse=False,
+                           ionosonde_dct=None, tdoa_csv_dct=None,
+                           image_panel=None,
+                           figsize=(15, 16), savefig=None):
+    """
+    Creates a two-panel (or three-panel) subplot figure with TDOA measurements (top) and layer heights (bottom).
+
+    This is useful for creating figures that show both raw TDOA measurements and the
+    derived layer heights in a single combined figure. Optionally includes an image panel.
+
+    Arguments:
+    chirps : pd.DataFrame
+        DataFrame containing chirp data and TDOA measurements.
+    tdoa_dct : dict
+        Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
+    subplot_labels : list of str, optional
+        Labels for each subplot (e.g., ['(a)', '(b)', '(c)']). If None, auto-generates based on number of panels.
+    ylim_tdoa : tuple, optional
+        Y-axis limits for TDOA plot. Default is (0, 5).
+    ylim_hmf2 : tuple, optional
+        Y-axis limits for layer height plot. Default is (200, 350).
+    xlim : tuple of datetime.datetime, optional
+        X-axis limits (start_time, end_time) applied to both TDOA and layer height plots.
+        If None, uses the full time range from the data.
+    legend_offset : float, optional
+        Vertical offset for TDOA legend position as fraction of axis height. Default is -0.06.
+        More negative values move the legend down. Use this to avoid overlap with data.
+    solar_lat : float, optional
+        Latitude for solar calculations (degrees, +N/-S).
+    solar_lon : float, optional
+        Longitude for solar calculations (degrees, +E/-W).
+    solar_start : datetime.datetime, optional
+        Start time for solar calculations.
+    solar_end : datetime.datetime, optional
+        End time for solar calculations.
+    overlay_solar_elevation : bool, optional
+        If True, overlay solar elevation angle on hmf2 plot. Default is False.
+    overlay_eclipse : bool, optional
+        If True, overlay eclipse obscuration on hmf2 plot. Default is False.
+    ionosonde_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_ionosonde() for hmf2 plot.
+    tdoa_csv_dct : dict, optional
+        Dictionary containing parameters to pass to overlay_tdoa_csv() for hmf2 plot.
+    image_panel : str, optional
+        Path to an image file to include as an additional panel (e.g., 'etalon.png').
+        If provided, creates a third panel below the layer heights plot.
+    figsize : tuple, optional
+        Figure size (width, height). Default is (15, 16).
+    savefig : str, optional
+        If provided, saves the figure to this file path. High-resolution JPEG recommended.
+        If None (default), figure is not saved to disk.
+    """
+    import datetime
+    from matplotlib import image as mpimg
+
+    # Determine number of panels
+    n_panels = 3 if image_panel is not None else 2
+
+    if subplot_labels is None:
+        subplot_labels = [f'({chr(97 + i)})' for i in range(n_panels)]  # (a), (b), (c), ...
+
+    # Adjust figure size if we have 3 panels
+    if n_panels == 3 and figsize == (15, 16):
+        figsize = (15, 20)  # Make taller for 3 panels
+
+    fig, axes = plt.subplots(n_panels, 1, figsize=figsize)
+
+    # Ensure axes is always iterable
+    if n_panels == 1:
+        axes = [axes]
+
+    ax_tdoa = axes[0]
+    ax_hmf2 = axes[1]
+
+    # Plot (a): TDOA measurements using the helper function
+    _plot_tdoa_on_axis(ax_tdoa, chirps, tdoa_dct, ylim=ylim_tdoa, show_date=True, legend_offset=legend_offset)
+
+    # Plot (b): Layer heights using the helper function
+    _plot_hmf2_on_axis(
+        ax_hmf2, chirps, tdoa_dct, ylim=ylim_hmf2,
+        solar_lat=solar_lat, solar_lon=solar_lon,
+        solar_start=solar_start, solar_end=solar_end,
+        overlay_solar_elevation=overlay_solar_elevation,
+        overlay_eclipse=overlay_eclipse,
+        ionosonde_dct=ionosonde_dct,
+        tdoa_csv_dct=tdoa_csv_dct,
+        show_date=True
+    )
+
+    # Plot (c): Image panel if provided
+    if image_panel is not None:
+        ax_img = axes[2]
+        img = mpimg.imread(image_panel)
+        ax_img.imshow(img)
+        ax_img.axis('off')  # Turn off axis for image panel
+
+    # Set x-axis limits for both time series plots if specified
+    if xlim is not None:
+        ax_tdoa.set_xlim(xlim)
+        ax_hmf2.set_xlim(xlim)
+
+    # Rotate x-axis labels for time series subplots (not image panel)
+    for ax in axes[:2]:  # Only first two panels have time axes
+        for tick_label in ax.get_xticklabels():
+            tick_label.set_rotation(45)
+            tick_label.set_horizontalalignment('right')
+
+    # Apply tight_layout first to calculate proper spacing
+    plt.tight_layout()
+
+    # Adjust spacing between subplots to prevent title overlap
+    plt.subplots_adjust(hspace=0.4)
+
+    # Add subplot labels AFTER layout adjustment
+    ax_tdoa.text(-0.08, 1.075, subplot_labels[0], transform=ax_tdoa.transAxes,
+                fontsize=30, fontweight='bold', va='top', ha='left')
+
+    ax_hmf2.text(-0.08, 1.075, subplot_labels[1], transform=ax_hmf2.transAxes,
+                fontsize=30, fontweight='bold', va='top', ha='left')
+
+    if image_panel is not None:
+        ax_img.text(-0.08, 1.075, subplot_labels[2], transform=ax_img.transAxes,
+                    fontsize=30, fontweight='bold', va='top', ha='left')
 
     # Save figure if filename provided
     if savefig is not None:

@@ -40,6 +40,7 @@ from .hf_tdoa_lib import (
     plot_TDOAs,
     plot_hmf2,
     plot_hmf2_subplot,
+    plot_tdoa_hmf2_subplot,
     title_from_pfx,
 
     # Configuration builder
@@ -79,6 +80,7 @@ __all__ = [
     'plot_TDOAs',
     'plot_hmf2',
     'plot_hmf2_subplot',
+    'plot_tdoa_hmf2_subplot',
     'title_from_pfx',
     'build_tdoa_config',
     'load_ionosonde_data',

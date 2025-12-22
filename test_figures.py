@@ -50,7 +50,8 @@ class NotebookFigureTester:
         self.notebook_outputs = {
             'fig_11': {'notebook': 'fig_11.ipynb', 'figures': ['fig_11.jpg']},
             'fig_12': {'notebook': 'fig_12.ipynb', 'figures': ['fig_12.jpg']},
-            'fig_13_14': {'notebook': 'fig_13_14.ipynb', 'figures': ['fig_13.jpg', 'fig_14.jpg']}
+            'fig_13_14': {'notebook': 'fig_13_14.ipynb', 'figures': ['fig_13.jpg', 'fig_14.jpg']},
+            'fig_15': {'notebook': 'fig_15.ipynb', 'figures': ['fig_15.jpg']}
         }
 
     def run_notebook(self, notebook_path: Path) -> Tuple[bool, str]:
@@ -67,7 +68,7 @@ class NotebookFigureTester:
             print(f"  Executing notebook: {notebook_path.name}")
 
             # Start progress bar in a separate thread
-            pbar = tqdm(total=100, desc="  Progress", bar_format='{desc}: {bar} {elapsed}', leave=False)
+            pbar = tqdm(total=100, desc="  Progress", bar_format='{desc}: {bar} {elapsed}', leave=False, dynamic_ncols=True)
             stop_event = threading.Event()
 
             def update_progress():
