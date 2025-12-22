@@ -1717,12 +1717,13 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
                            solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                            overlay_solar_elevation=False, overlay_eclipse=False,
                            ionosonde_dct=None, tdoa_csv_dct=None,
+                           image_panel=None,
                            figsize=(15, 16), savefig=None):
     """
-    Creates a two-panel subplot figure with TDOA measurements (top) and layer heights (bottom).
+    Creates a two-panel (or three-panel) subplot figure with TDOA measurements (top) and layer heights (bottom).
 
     This is useful for creating figures that show both raw TDOA measurements and the
-    derived layer heights in a single combined figure.
+    derived layer heights in a single combined figure. Optionally includes an image panel.
 
     Arguments:
     chirps : pd.DataFrame
@@ -1730,7 +1731,7 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
     tdoa_dct : dict
         Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
     subplot_labels : list of str, optional
-        Labels for each subplot (e.g., ['(a)', '(b)']). If None, uses (a), (b).
+        Labels for each subplot (e.g., ['(a)', '(b)', '(c)']). If None, auto-generates based on number of panels.
     ylim_tdoa : tuple, optional
         Y-axis limits for TDOA plot. Default is (0, 5).
     ylim_hmf2 : tuple, optional
@@ -1751,6 +1752,9 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
         Dictionary containing parameters to pass to overlay_ionosonde() for hmf2 plot.
     tdoa_csv_dct : dict, optional
         Dictionary containing parameters to pass to overlay_tdoa_csv() for hmf2 plot.
+    image_panel : str, optional
+        Path to an image file to include as an additional panel (e.g., 'etalon.png').
+        If provided, creates a third panel below the layer heights plot.
     figsize : tuple, optional
         Figure size (width, height). Default is (15, 16).
     savefig : str, optional
@@ -1758,11 +1762,24 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
         If None (default), figure is not saved to disk.
     """
     import datetime
+    from matplotlib import image as mpimg
+
+    # Determine number of panels
+    n_panels = 3 if image_panel is not None else 2
 
     if subplot_labels is None:
-        subplot_labels = ['(a)', '(b)']
+        subplot_labels = [f'({chr(97 + i)})' for i in range(n_panels)]  # (a), (b), (c), ...
 
-    fig, axes = plt.subplots(2, 1, figsize=figsize)
+    # Adjust figure size if we have 3 panels
+    if n_panels == 3 and figsize == (15, 16):
+        figsize = (15, 20)  # Make taller for 3 panels
+
+    fig, axes = plt.subplots(n_panels, 1, figsize=figsize)
+
+    # Ensure axes is always iterable
+    if n_panels == 1:
+        axes = [axes]
+
     ax_tdoa = axes[0]
     ax_hmf2 = axes[1]
 
@@ -1789,8 +1806,19 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
     ax_hmf2.text(-0.08, 1.075, subplot_labels[1], transform=ax_hmf2.transAxes,
                 fontsize=30, fontweight='bold', va='top', ha='left')
 
-    # Rotate x-axis labels for both subplots
-    for ax in axes:
+    # Plot (c): Image panel if provided
+    if image_panel is not None:
+        ax_img = axes[2]
+        img = mpimg.imread(image_panel)
+        ax_img.imshow(img)
+        ax_img.axis('off')  # Turn off axis for image panel
+
+        # Add subplot label (c)
+        ax_img.text(-0.08, 1.075, subplot_labels[2], transform=ax_img.transAxes,
+                    fontsize=30, fontweight='bold', va='top', ha='left')
+
+    # Rotate x-axis labels for time series subplots (not image panel)
+    for ax in axes[:2]:  # Only first two panels have time axes
         for tick_label in ax.get_xticklabels():
             tick_label.set_rotation(45)
             tick_label.set_horizontalalignment('right')
