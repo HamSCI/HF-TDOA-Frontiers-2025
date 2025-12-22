@@ -62,25 +62,33 @@ def _format_datetime_axis(ax, time_format='%H:%M', interval_minutes=15):
 # Mode-specific configuration parameters
 # Each mode includes filter limits, search limits, and plotting parameters
 MODE_CONFIGS = {
+    '3F2-1F2': {
+        'filter_limts': [10, 50],               # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 25, 50],   # (start_offset, end_offset, min_freq, max_freq)
+        'linestyle': '-.',
+        'linewidth': 3,
+        'color': 'mediumblue',
+        'marker': 'v'
+    },
     '2F2-1F2': {
-        'filter_limts': [10, 50],           # Bandpass filter limits [Hz]
-        'search_limits': [-0.1, 0.1, 11, 20],  # (start_offset, end_offset, min_freq, max_freq)
+        'filter_limts': [10, 50],               # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 11, 20],   # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': '--',
         'linewidth': 3,
         'color': 'tab:green',
         'marker': 'o'
     },
     '1F2-1E': {
-        'filter_limts': [2.5, 30],          # Bandpass filter limits [Hz]
-        'search_limits': [-0.1, 0.1, 5, 12],  # (start_offset, end_offset, min_freq, max_freq)
+        'filter_limts': [2.5, 30],              # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 5, 12],    # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': '-.',
         'linewidth': 1.5,
         'color': 'tab:blue',
         'marker': '*'
     },
     '2F2-1E': {
-        'filter_limts': [20, 30],           # Bandpass filter limits [Hz]
-        'search_limits': [-0.1, 0.1, 22, 30],  # (start_offset, end_offset, min_freq, max_freq)
+        'filter_limts': [20, 30],               # Bandpass filter limits [Hz]
+        'search_limits': [-0.1, 0.1, 22, 30],   # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': ':',
         'linewidth': 2.5,
         'color': 'tab:orange',
@@ -1105,7 +1113,8 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
         DataFrame containing chirp data. Must have 'path_info' in attrs.
     mode_strings : list of str, optional
         List of mode strings to include in the configuration (e.g., ['2F2-1F2', '1F2-1E']).
-        If None, includes all modes defined in MODE_CONFIGS.
+        If None, automatically detects which modes have been processed by checking for
+        columns with '_mean' suffix in the chirps DataFrame.
     **mode_overrides : dict, optional
         Override parameters for specific modes. Use mode_string as key with a dict of parameters.
         Example: build_tdoa_config(chirps, **{'2F2-1F2': {'color': 'red', 'linewidth': 5}})
@@ -1119,7 +1128,13 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
         raise ValueError("chirps must have 'path_info' in attrs")
 
     if mode_strings is None:
-        mode_strings = list(MODE_CONFIGS.keys())
+        # Auto-detect which modes have been processed by checking for columns ending with '_mean'
+        mode_strings = []
+        for col in chirps.columns:
+            if col.endswith('_mean'):
+                mode_name = col[:-5]  # Remove '_mean' suffix
+                if mode_name in MODE_CONFIGS:
+                    mode_strings.append(mode_name)
 
     tdoa_dct = {}
     for mode_string in mode_strings:
