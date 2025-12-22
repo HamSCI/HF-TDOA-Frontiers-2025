@@ -1072,7 +1072,7 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     return wav_data
 
 
-def title_from_pfx(ax, pfx, date=None):
+def title_from_pfx(ax, pfx, date=None, center_title=None):
     """
     Creates a formatted title for plots based on the prefix string.
 
@@ -1083,6 +1083,9 @@ def title_from_pfx(ax, pfx, date=None):
         Prefix string containing TX/RX station information, or a PathInfo object.
     date : datetime.datetime, optional
         Date to display in the center title.
+    center_title : str, optional
+        Custom text to display above the date in the center title (e.g., 'TDOA' or 'Ionospheric Layer Height').
+        If provided, creates a two-line center title with this text on top and the date below.
     """
     # Accept either a string or a PathInfo object
     if isinstance(pfx, str):
@@ -1099,7 +1102,13 @@ def title_from_pfx(ax, pfx, date=None):
 
     if date is not None:
         date_str = date.strftime('%Y %b %d')
-        ax.set_title(date_str, loc='center', fontsize=34)
+        if center_title is not None:
+            # Two-line center title with custom text on top and date below
+            center_text = f'{center_title}\n{date_str}'
+        else:
+            # Just the date
+            center_text = date_str
+        ax.set_title(center_text, loc='center', fontsize=26)
 
 
 def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
@@ -1216,7 +1225,7 @@ def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True):
 
     # Show date if requested
     date = times.iloc[0] if show_date else None
-    title_from_pfx(ax, path_info, date)
+    title_from_pfx(ax, path_info, date, center_title='TDOA')
 
 
 def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
@@ -1530,7 +1539,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
 
     # Show date if requested
     date = times.iloc[0] if show_date else None
-    title_from_pfx(ax, path_info, date)
+    title_from_pfx(ax, path_info, date, center_title='Ionospheric Layer Height')
 
 
 def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
@@ -1786,10 +1795,6 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
     # Plot (a): TDOA measurements using the helper function
     _plot_tdoa_on_axis(ax_tdoa, chirps, tdoa_dct, ylim=ylim_tdoa, show_date=True)
 
-    # Add subplot label (a)
-    ax_tdoa.text(-0.08, 1.075, subplot_labels[0], transform=ax_tdoa.transAxes,
-                fontsize=30, fontweight='bold', va='top', ha='left')
-
     # Plot (b): Layer heights using the helper function
     _plot_hmf2_on_axis(
         ax_hmf2, chirps, tdoa_dct, ylim=ylim_hmf2,
@@ -1802,10 +1807,6 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
         show_date=True
     )
 
-    # Add subplot label (b)
-    ax_hmf2.text(-0.08, 1.075, subplot_labels[1], transform=ax_hmf2.transAxes,
-                fontsize=30, fontweight='bold', va='top', ha='left')
-
     # Plot (c): Image panel if provided
     if image_panel is not None:
         ax_img = axes[2]
@@ -1813,18 +1814,28 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
         ax_img.imshow(img)
         ax_img.axis('off')  # Turn off axis for image panel
 
-        # Add subplot label (c)
-        ax_img.text(-0.08, 1.075, subplot_labels[2], transform=ax_img.transAxes,
-                    fontsize=30, fontweight='bold', va='top', ha='left')
-
     # Rotate x-axis labels for time series subplots (not image panel)
     for ax in axes[:2]:  # Only first two panels have time axes
         for tick_label in ax.get_xticklabels():
             tick_label.set_rotation(45)
             tick_label.set_horizontalalignment('right')
 
+    # Apply tight_layout first to calculate proper spacing
     plt.tight_layout()
-    plt.subplots_adjust(hspace=0.3)
+
+    # Adjust spacing between subplots to prevent title overlap
+    plt.subplots_adjust(hspace=0.4)
+
+    # Add subplot labels AFTER layout adjustment
+    ax_tdoa.text(-0.08, 1.075, subplot_labels[0], transform=ax_tdoa.transAxes,
+                fontsize=30, fontweight='bold', va='top', ha='left')
+
+    ax_hmf2.text(-0.08, 1.075, subplot_labels[1], transform=ax_hmf2.transAxes,
+                fontsize=30, fontweight='bold', va='top', ha='left')
+
+    if image_panel is not None:
+        ax_img.text(-0.08, 1.075, subplot_labels[2], transform=ax_img.transAxes,
+                    fontsize=30, fontweight='bold', va='top', ha='left')
 
     # Save figure if filename provided
     if savefig is not None:
