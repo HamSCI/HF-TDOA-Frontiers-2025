@@ -1628,7 +1628,7 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
     plt.close(fig)
 
 
-def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350),
+def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350), xlim=None,
                       solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                       overlay_solar_elevation=False, overlay_eclipse=False,
                       ionosonde_dct=None, tdoa_csv_dct_list=None, figsize=(15, 16), savefig=None):
@@ -1646,6 +1646,9 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
         Labels for each subplot (e.g., ['(a)', '(b)']). If None, uses (a), (b), (c), etc.
     ylim : tuple, optional
         Y-axis limits for all plots. Default is (200, 350).
+    xlim : tuple of datetime.datetime, optional
+        X-axis limits (start_time, end_time) applied to all subplots.
+        If None, uses the full time range from the data.
     solar_lat : float, optional
         Latitude for solar calculations (degrees, +N/-S).
     solar_lon : float, optional
@@ -1699,6 +1702,10 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
             show_date=True
         )
 
+        # Set x-axis limits if specified
+        if xlim is not None:
+            ax.set_xlim(xlim)
+
         # Add subplot label (a), (b), etc. using ax.text outside the axes
         # Position it in axes coordinates - outside upper left corner
         ax.text(-0.08, 1.075, label, transform=ax.transAxes,
@@ -1722,7 +1729,7 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
 
 
 def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
-                           ylim_tdoa=(0, 5), ylim_hmf2=(200, 350),
+                           ylim_tdoa=(0, 5), ylim_hmf2=(200, 350), xlim=None,
                            solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
                            overlay_solar_elevation=False, overlay_eclipse=False,
                            ionosonde_dct=None, tdoa_csv_dct=None,
@@ -1745,6 +1752,9 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
         Y-axis limits for TDOA plot. Default is (0, 5).
     ylim_hmf2 : tuple, optional
         Y-axis limits for layer height plot. Default is (200, 350).
+    xlim : tuple of datetime.datetime, optional
+        X-axis limits (start_time, end_time) applied to both TDOA and layer height plots.
+        If None, uses the full time range from the data.
     solar_lat : float, optional
         Latitude for solar calculations (degrees, +N/-S).
     solar_lon : float, optional
@@ -1813,6 +1823,11 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
         img = mpimg.imread(image_panel)
         ax_img.imshow(img)
         ax_img.axis('off')  # Turn off axis for image panel
+
+    # Set x-axis limits for both time series plots if specified
+    if xlim is not None:
+        ax_tdoa.set_xlim(xlim)
+        ax_hmf2.set_xlim(xlim)
 
     # Rotate x-axis labels for time series subplots (not image panel)
     for ax in axes[:2]:  # Only first two panels have time axes
