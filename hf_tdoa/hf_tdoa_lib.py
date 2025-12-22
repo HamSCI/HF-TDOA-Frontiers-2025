@@ -1675,6 +1675,12 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
     savefig : str, optional
         If provided, saves the figure to this file path. High-resolution JPEG recommended.
         If None (default), figure is not saved to disk.
+    legend_loc : str, optional
+        Legend location for all subplots. Default is 'best'. Can be 'upper left', 'upper right',
+        'lower left', 'lower right', 'center', 'best', etc.
+    legend_fontsize : int or str, optional
+        Legend font size for all subplots. If None, uses matplotlib default.
+        Can be int or 'small', 'medium', 'large', etc.
     """
     import datetime
 
@@ -1704,7 +1710,9 @@ def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200
             overlay_eclipse=overlay_eclipse,
             ionosonde_dct=ionosonde_dct,
             tdoa_csv_dct=tdoa_csv_dct,
-            show_date=True
+            show_date=True,
+            legend_loc=legend_loc,
+            legend_fontsize=legend_fontsize
         )
 
         # Set x-axis limits if specified
