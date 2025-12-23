@@ -1541,7 +1541,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
     title_from_pfx(ax, path_info, date, center_title='Ionospheric Layer Height')
 
 
-def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
+def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
               solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
               overlay_solar_elevation=False, overlay_eclipse=False,
               ionosonde_dct=None, tdoa_csv_dct=None, savefig=None):
@@ -1555,6 +1555,8 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
     ylim : tuple, optional
         Y-axis limits for the plot. Default is (75, 450).
+    xlim : tuple of datetime, optional
+        X-axis limits for the plot as (start_datetime, end_datetime). Default is None (auto).
     solar_lat : float, optional
         Latitude for solar calculations (degrees, +N/-S). Required if overlay_solar_elevation or overlay_eclipse is True.
     solar_lon : float, optional
@@ -1614,6 +1616,10 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         tdoa_csv_dct=tdoa_csv_dct,
         show_date=True
     )
+
+    # Set x-axis limits if provided
+    if xlim is not None:
+        ax.set_xlim(xlim)
 
     fig.autofmt_xdate()
     plt.tight_layout()
