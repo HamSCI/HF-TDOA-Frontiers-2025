@@ -5,13 +5,21 @@ Data and software repository to support
 
 Cerwin, Stephen A., Jesse T. McMahan, Alexandros S. Papadopoulos, Gerard N. Piccini, Nathaniel A. Frissell, Kristina V. Collins, Aidain Montare, Paul Bilberry, Samuel Blackshear, and David R. Themens (2025). "HamSCI HF Multipath Propagation Mode Analysis Using Amateur Radios and Audio Waveforms Sensitive to Time Difference of Arrival." submitted to _Frontiers in Astronomy and Space Sciences - Space Physics_.
 
-# HF TDOA Analysis - Figures 11-14
+# HF TDOA Analysis - Complete Manuscript Figures
 
-This directory contains Jupyter notebooks and Python libraries for analyzing High Frequency (HF) Time Difference of Arrival (TDOA) measurements from chirp sounder data, as presented in Figures 11-14 of the Frontiers manuscript.
+This directory contains Jupyter notebooks, Python libraries, and supporting materials for generating all figures in the Frontiers manuscript on HF Time Difference of Arrival (TDOA) measurements from chirp sounder data.
 
 ## Overview
 
 The analysis uses cross-correlation techniques to detect chirp signals in WAV recordings and extract TDOA measurements between different ionospheric propagation modes. These TDOAs are then converted to ionospheric layer heights using a spherical Earth virtual height model and compared with ionosonde measurements.
+
+This repository contains:
+
+- **15 figures** (Figures 1-15) with supporting materials for manuscript publication
+- **8 Jupyter notebooks** for computational figure generation and analysis
+- **Complete HF TDOA analysis library** (`hf_tdoa` package) with core functionality
+- **Automated figure reproducibility testing** to verify computational results
+- **Validation notebooks** for ionosonde data quality assurance
 
 ## Installation
 
@@ -60,31 +68,82 @@ jupyter lab
 ├── setup.py                     # Package installation script
 ├── test_figures.py              # Figure reproducibility test script
 ├── TEST_README.md               # Testing documentation
-├── fig_11/                      # Figure 11 analysis
-│   └── fig_11.ipynb             # Figure 11 notebook
-├── fig_12/                      # Figure 12 analysis
-│   └── fig_12.ipynb             # Figure 12 notebook
-├── fig_13_14/                   # Figures 13-14 analysis
-│   └── fig_13_14.ipynb          # Figures 13-14 notebook
+├── fig_01/                      # Figure 1: System diagram
+│   ├── fig_01.jpg
+│   └── fig_01.pptx
+├── fig_02/                      # Figure 2: Receiver setup
+│   ├── fig_02.jpg
+│   └── fig_02.pptx
+├── fig_03/                      # Figure 3: Spectrogram analysis
+│   ├── fig_03.ipynb
+│   └── fig_03.jpg
+├── fig_04/                      # Figure 4: Chirp detection
+│   ├── fig_04.ipynb
+│   └── fig_04.jpg
+├── fig_05/                      # Figure 5: Multi-path detection
+│   ├── fig_05.ipynb
+│   └── fig_05.jpg
+├── fig_06/                      # Figure 6: Virtual height geometry
+│   ├── fig_06_VirtualHeightGeometry.jpg
+│   └── fig_06_VirtualHeightGeometry.pptx
+├── fig_07/                      # Figure 7: TDOA spreadsheet
+│   ├── Expected Mode TDOA -Figure-B.xlsx
+│   └── fig_07_spreadsheet.jpg
+├── fig_08/                      # Figure 8: Same path, different frequencies
+│   ├── fig_08_SamePathDiffFreq.jpg
+│   ├── fig_08_SamePathDiffFreq.pptx
+│   ├── fig_08a_virtual_heights.jpg
+│   └── fig_08b_critical_frequencies.jpg
+├── fig_09/                      # Figure 9: Same frequency, different paths
+│   ├── fig_09_SameFreqDiffPath.jpg
+│   └── fig_09_SameFreqDiffPath.pptx
+├── fig_10/                      # Figure 10: Statistical comparison
+│   ├── fig_10.jpg
+│   └── fig_10.pptx
+├── fig_11/                      # Figure 11: TDOA analysis (WA5FRF→N5DUP)
+│   ├── fig_11.ipynb
+│   └── fig_11.jpg
+├── fig_12/                      # Figure 12: Dual-band comparison
+│   ├── fig_12.ipynb
+│   └── fig_12.jpg
+├── fig_13_14/                   # Figures 13-14: Multi-mode TDOA
+│   ├── fig_13_14.ipynb
+│   ├── fig_13.jpg
+│   └── fig_14.jpg
+├── fig_15/                      # Figure 15: Etalon mode analysis
+│   ├── fig_15.ipynb
+│   ├── fig_15.jpg
+│   ├── fig_15_EtalonModes.jpg
+│   └── fig_15_EtalonModes.pptx
+├── fig_supporting/              # Supporting validation figures
+│   ├── Austin_Ionosonde_Data_Validation.ipynb
+│   ├── validation_virtual_heights.jpg
+│   └── validation_critical_frequencies.jpg
 ├── data/                        # WAV recordings and CSV data
 │   ├── TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m/
-│   ├── TX_WA5FRF_EL09nn-RX_AB5YO_EL09so-40m/
-│   ├── TX_WA5FRF_EL09nn-RX_AB5YO_EL09so-60m/
+│   ├── TX_WA5FRF_EL09nn-RX_AB5YO_EL09mn-40m/
+│   ├── TX_WA5FRF_EL09nn-RX_AB5YO_EL09mn-60m/
 │   ├── TX_WA5FRF_EL09nn-RX_N6RFM_EM12jw-40m/
+│   ├── templates/               # Reference chirp templates
+│   │   └── N6RFM_10Hz_per_ms_template.wav
 │   └── CSVs/                    # Ionosonde and manual TDOA data
-├── templates/                   # Reference chirp templates
 ├── submitted_figures/           # Baseline figures for testing
+│   ├── fig_11.jpg
+│   ├── fig_12.jpg
+│   ├── fig_13.jpg
+│   ├── fig_14.jpg
+│   └── fig_15.jpg
 └── hf_tdoa/                     # HF TDOA analysis package
     ├── __init__.py              # Package initialization
     ├── hf_tdoa_lib.py           # Core TDOA analysis library
-    ├── calcSun.py              # Solar position calculations
-    ├── eclipse_calc.py         # Eclipse obscuration calculations
-    ├── solarContext.py         # Solar context and overlays
-    ├── locator.py              # Grid square conversions
-    ├── geopack.py              # Geodetic calculations
-    ├── maps.py                 # Mapping utilities
-    ├── gen_lib.py              # General utilities
-    └── rayTracePaths.py        # Ray tracing functions
+    ├── calcSun.py               # Solar position calculations
+    ├── eclipse_calc.py          # Eclipse obscuration calculations
+    ├── solarContext.py          # Solar context and overlays
+    ├── locator.py               # Grid square conversions
+    ├── geopack.py               # Geodetic calculations
+    ├── maps.py                  # Mapping utilities
+    ├── gen_lib.py               # General utilities
+    └── rayTracePaths.py         # Ray tracing functions
 ```
 
 ## Core Package: hf_tdoa
@@ -164,38 +223,72 @@ Three propagation modes are pre-configured in `MODE_CONFIGS`:
 
 Each mode includes optimized filter limits, search windows, and plotting parameters.
 
-## Jupyter Notebooks
+## Figures Overview
 
-Each notebook is organized in its own subdirectory for better organization and testing. Navigate to the respective subdirectory to run each notebook.
+The repository contains materials for generating all manuscript figures:
 
-### fig_11/fig_11.ipynb
+### Static Figures (Pre-generated)
 
-Analyzes the WA5FRF→N5DUP 40m path and generates Figure 11:
+- **Figures 1-2**: System diagrams and receiver setup (PowerPoint/JPG)
+- **Figure 6**: Virtual height geometry diagram (PowerPoint/JPG)
+- **Figures 7, 9-10**: Spreadsheet analyses and comparisons (Excel/PowerPoint/JPG)
+
+### Jupyter Notebook-Generated Figures
+
+Each computational figure is organized in its own subdirectory with a Jupyter notebook that generates the figure.
+
+#### [fig_03/fig_03.ipynb](fig_03/fig_03.ipynb)
+
+Spectrogram analysis showing chirp signals in the time-frequency domain.
+
+#### [fig_04/fig_04.ipynb](fig_04/fig_04.ipynb)
+
+Chirp detection using cross-correlation template matching.
+
+#### [fig_05/fig_05.ipynb](fig_05/fig_05.ipynb)
+
+Multi-path propagation mode detection and analysis.
+
+#### [fig_11/fig_11.ipynb](fig_11/fig_11.ipynb)
+
+**TDOA analysis for WA5FRF→N5DUP 40m path:**
+
 - Chirp detection via cross-correlation
 - TDOA extraction for 2F2-1F2 mode
 - Layer height comparison with Austin ionosonde
 - Solar elevation and eclipse obscuration overlay
 - Comparison with manual period analysis
 
-**Key Steps:**
-1. Load WAV files and find chirps using template matching
-2. Process TDOAs for the 2F2-1F2 propagation mode
-3. Calculate TDOA model coefficients automatically
-4. Generate layer height plot with multiple overlays
+#### [fig_12/fig_12.ipynb](fig_12/fig_12.ipynb)
 
-### fig_12/fig_12.ipynb
+**Dual-band comparison (40m and 60m):**
 
-Generates Figure 12 with dual-band analysis (40m and 60m):
 - Two-panel subplot comparing different frequency bands
-- WA5FRF→AB5YO path on both 40m and 60m
-- Demonstrates multi-panel plotting capabilities
+- WA5FRF→AB5YO path analysis
+- Demonstrates frequency-dependent propagation
 
-### fig_13_14/fig_13_14.ipynb
+#### [fig_13_14/fig_13_14.ipynb](fig_13_14/fig_13_14.ipynb)
 
-Generates Figures 13 and 14:
-- Analysis of WA5FRF→AB5YO and WA5FRF→N6RFM paths
-- Multi-mode TDOA processing (2F2-1F2, 1F2-1E, 2F2-1E)
-- Comparison of different propagation modes
+**Multi-mode TDOA analysis:**
+
+- Figure 13: WA5FRF→AB5YO path with multiple propagation modes
+- Figure 14: WA5FRF→N6RFM path analysis
+- Processes 2F2-1F2, 1F2-1E, and 2F2-1E modes
+- Compares different ionospheric layer interactions
+
+#### [fig_15/fig_15.ipynb](fig_15/fig_15.ipynb)
+
+**Etalon mode analysis:**
+
+- Detection and analysis of etalon propagation modes
+- Multi-hop reflection pattern identification
+
+#### [fig_supporting/Austin_Ionosonde_Data_Validation.ipynb](fig_supporting/Austin_Ionosonde_Data_Validation.ipynb)
+
+**Ionosonde data validation:**
+
+- Validates Austin ionosonde measurements
+- Generates supporting validation plots for virtual heights and critical frequencies
 
 ## Usage Example
 
@@ -211,7 +304,7 @@ tdoa.setup_plotting_style()
 # Define data paths
 base_dir = 'data'
 data_set = 'TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m'
-template = os.path.join('templates', 'N6RFM_10Hz_per_ms_template.wav')
+template = os.path.join(base_dir, 'templates', 'N6RFM_10Hz_per_ms_template.wav')
 data_dir = os.path.join(base_dir, data_set)
 
 # Get WAV file list
@@ -271,20 +364,31 @@ tdoa.plot_hmf2(chirps, tdoa_dct, ylim=(75, 450))
 ## Data Format
 
 ### WAV Files
+
 WAV files contain chirp sounder recordings with the naming convention:
+
 ```
 YYYYMMDD.HHMM-<PREFIX>-<STATION_INFO>.wav
 ```
 
 Example: `20240408.1413-TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m.wav`
 
+### Template Files
+
+Reference chirp templates are located in [data/templates/](data/templates/) and are used for cross-correlation matching:
+
+- `N6RFM_10Hz_per_ms_template.wav` - Standard 10 Hz/ms chirp template
+
 ### CSV Files
+
 TDOA CSV files contain manual measurements with columns:
+
 - `utc`: Timestamp (ISO format)
 - `manualBeatNote_TDOA_ms`: Manual period analysis TDOA (ms)
 - `autoCorrelation_TDOA_ms`: Auto-correlation TDOA (ms)
 
 Ionosonde CSV files contain:
+
 - `UTC`: Timestamp
 - `hmF2`: F2 layer height (km)
 - `hmE`: E layer height (km)
@@ -306,22 +410,46 @@ h_F2 = slope × TDOA + intercept
 
 The model coefficients are automatically computed from the path geometry using equations 4-7 in the manuscript.
 
+## Figure Reproducibility Testing
+
+The repository includes an automated testing script to verify figure reproducibility. This script executes all Jupyter notebooks and compares the generated figures against baseline figures.
+
+### Running Tests
+
+```bash
+python test_figures.py
+```
+
+The test script:
+
+1. Executes each notebook in its subdirectory
+2. Compares generated JPG figures to baseline figures in [submitted_figures/](submitted_figures/)
+3. Reports differences using pixel-level and structural similarity metrics
+
+See [TEST_README.md](TEST_README.md) for detailed testing documentation.
+
 ## Troubleshooting
 
 ### Import Errors
+
 If you encounter import errors with `hf_tdoa`, ensure the conda environment is properly activated:
+
 ```bash
 conda activate hf-tdoa
 ```
 
 ### Missing Data
+
 If WAV files are missing, check that you're in the correct directory and the `data/` folder contains the required datasets.
 
 ### Plot Not Displaying
+
 If plots don't display in Jupyter, ensure you have:
+
 ```python
 %matplotlib inline
 ```
+
 at the top of your notebook.
 
 ## References
