@@ -589,15 +589,14 @@ def load_wav(fname, normalize=True):
 
 def load_ionosonde_data(csv_path=None):
     """
-    Loads ionosonde data from a CSV file or TXT file.
+    Loads ionosonde data from a CSV file.
 
-    Supports two formats:
-    1. CSV format with columns: UTC, hmE, hmF2
-    2. TXT format (GIRO DIDBase) with fixed-width columns and header lines starting with #
+    The CSV file should have columns: UTC, foF2, foF1, foE, hmF2, hmF1, hmE
+    Header lines starting with # are automatically skipped.
 
     Arguments:
     csv_path : str, optional
-        Path to the ionosonde data file (CSV or TXT).
+        Path to the ionosonde CSV file.
         If None, uses default Austin TX ionosonde data.
 
     Returns:
@@ -609,60 +608,11 @@ def load_ionosonde_data(csv_path=None):
     if csv_path is None:
         # Get the directory containing this file (hf_tdoa package directory)
         package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.TXT')
+        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv')
 
-    # Check if this is the new TXT format (has comment lines starting with #)
-    with open(csv_path, 'r') as f:
-        first_line = f.readline().strip()
-
-    if first_line.startswith('#'):
-        # New TXT format - parse the GIRO DIDBase format
-        # Read file skipping comment lines
-        data_lines = []
-        with open(csv_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                # Skip comment lines and header line
-                if line.startswith('#') or 'yyyy.MM.dd' in line or not line:
-                    continue
-                data_lines.append(line)
-
-        # Parse the data lines
-        records = []
-        for line in data_lines:
-            parts = line.split()
-            if len(parts) < 9:
-                continue
-
-            # Parse datetime: yyyy.MM.dd (DDD) HH:mm:ss
-            date_str = f"{parts[0]} {parts[2]}"
-            try:
-                dt = pd.to_datetime(date_str, format='%Y.%m.%d %H:%M:%S')
-            except:
-                continue
-
-            # Parse values, replacing '---' with NaN
-            def parse_val(s):
-                return float(s) if s != '---' else np.nan
-
-            # Column indices: 3=C-score, 4=foF2, 5=foF1, 6=foE, 7=hmF2, 8=hmF1, 9=hmE
-            record = {
-                'UTC': dt,
-                'foF2': parse_val(parts[4]) if len(parts) > 4 else np.nan,
-                'foF1': parse_val(parts[5]) if len(parts) > 5 else np.nan,
-                'foE': parse_val(parts[6]) if len(parts) > 6 else np.nan,
-                'hmF2': parse_val(parts[7]) if len(parts) > 7 else np.nan,
-                'hmF1': parse_val(parts[8]) if len(parts) > 8 else np.nan,
-                'hmE': parse_val(parts[9]) if len(parts) > 9 else np.nan,
-            }
-            records.append(record)
-
-        ionosonde_df = pd.DataFrame(records)
-        ionosonde_df = ionosonde_df.set_index('UTC')
-    else:
-        # Old CSV format
-        ionosonde_df = pd.read_csv(csv_path, parse_dates=['UTC'])
-        ionosonde_df = ionosonde_df.set_index('UTC')
+    # Load CSV file, skipping comment lines starting with #
+    ionosonde_df = pd.read_csv(csv_path, comment='#', parse_dates=['UTC'])
+    ionosonde_df = ionosonde_df.set_index('UTC')
 
     return ionosonde_df
 
@@ -1958,7 +1908,7 @@ def overlay_ionosonde(ax, csv_path=None,
     if csv_path is None:
         # Get the directory containing this file (hf_tdoa package directory)
         package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.TXT')
+        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv')
 
     ionosonde_df = load_ionosonde_data(csv_path)
 
@@ -1971,7 +1921,7 @@ def overlay_ionosonde(ax, csv_path=None,
                 label=f"{label} hmE", linewidth=2)
 
 
-def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.TXT',
+def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv',
                              overlay_hmF2=True, overlay_hmE=True):
     """
     Overlays Austin, TX ionosonde data (hmF2 and hmE) on an existing axes.
@@ -1982,7 +1932,7 @@ def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_AU930_AustinTX_I
     ax : matplotlib.axes.Axes
         The axes object to plot on.
     csv_path : str, optional
-        Path to the ionosonde data file. Default is 'data/CSVs/2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.TXT'.
+        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv'.
     overlay_hmF2 : bool, optional
         If True, overlay hmF2 data. Default is True.
     overlay_hmE : bool, optional
