@@ -1,8 +1,76 @@
 """
 HF TDOA Analysis Library
+=========================
 
-This library provides functions for analyzing HF TDOA (Time Difference of Arrival) data
-from WAV file recordings of chirp signals.
+This library provides tools for analyzing High-Frequency (HF) radio Time Difference
+of Arrival (TDOA) measurements from WAV file recordings of chirp signals.
+
+Physical Concept
+----------------
+When an HF radio signal propagates via the ionosphere, it can take multiple paths
+by reflecting off different ionospheric layers (E and F2) with different numbers of
+"hops" (reflections between ground and ionosphere). Each path arrives at a slightly
+different time, creating interference patterns known as "beats."
+
+By measuring the Time Difference of Arrival (TDOA) between these paths and knowing
+the transmitter-receiver geometry, we can infer the virtual height of ionospheric
+layers. This technique provides remote sensing of the ionosphere using standard
+amateur radio equipment.
+
+Key Workflow
+------------
+1. **Data Loading**: Load WAV file recordings containing chirp signals
+2. **Chirp Detection**: Cross-correlate with a template to find chirps in the recordings
+3. **Signal Processing**: Filter and extract the beat frequency envelope
+4. **TDOA Extraction**: Measure beat frequencies and convert to TDOA values
+5. **Layer Height Calculation**: Apply the spherical Earth model to convert TDOA to layer heights
+6. **Visualization**: Compare with ionosonde measurements and solar conditions
+
+Mode Nomenclature
+-----------------
+Modes are labeled as "{n_hops}{Layer}-{m_hops}{Layer}":
+  - "2F2-1F2": 2-hop F2 layer minus 1-hop F2 layer
+  - "1F2-1E":  1-hop F2 layer minus 1-hop E layer
+  - "2F2-1E":  2-hop F2 layer minus 1-hop E layer
+  - "3F2-1F2": 3-hop F2 layer minus 1-hop F2 layer
+
+Main Classes
+------------
+PathInfo : Parse transmitter/receiver geometry and calculate propagation parameters
+
+Main Functions
+--------------
+Data Loading:
+  - obtain_wav_list() : Get sorted list of WAV files from directory
+  - load_wav() : Load WAV file into pandas DataFrame
+  - load_ionosonde_data() : Load ionosonde CSV for validation
+  - load_tdoa_csv() : Load previously-computed TDOA measurements
+
+Signal Processing:
+  - filter() : Bandpass filter signal and extract envelope
+  - chirp_fft() : Calculate FFT of chirp signal
+  - find_max() : Find maximum peak in frequency spectrum
+
+Analysis:
+  - find_chirps() : Locate chirps via cross-correlation with template
+  - find_TDOAs() : Extract TDOA measurements from chirp signals
+  - build_tdoa_config() : Build configuration for plotting multiple modes
+
+Visualization:
+  - setup_plotting_style() : Configure matplotlib defaults
+  - plot_TDOAs() : Plot raw TDOA measurements vs time
+  - plot_hmf2() : Plot derived layer heights vs time
+  - plot_hmf2_subplot() : Multi-panel plots for multiple datasets
+  - plot_tdoa_hmf2_subplot() : Combined TDOA and layer height plots
+
+For detailed function documentation, see individual function docstrings.
+
+Physical Constants
+------------------
+- Earth radius: 6378 km
+- E layer height: 105 km (fixed)
+- F2 layer height: Variable, typically 225-375 km
+- Speed of light: 300,000 km/s
 """
 
 import os
@@ -19,45 +87,8 @@ from tqdm import tqdm
 
 
 # ============================================================================
-# Utility Functions for Reducing Code Duplication
+# Configuration Constants and Global Parameters
 # ============================================================================
-
-def _ensure_scalar(value):
-    """
-    Convert numpy array to scalar if needed.
-
-    Parameters:
-    -----------
-    value : float or np.ndarray
-        Value that may be a scalar or numpy array
-
-    Returns:
-    --------
-    float
-        Scalar value
-    """
-    if not np.isscalar(value):
-        return float(value.item())
-    return float(value)
-
-
-def _format_datetime_axis(ax, time_format='%H:%M', interval_minutes=15):
-    """
-    Format datetime x-axis with consistent styling.
-
-    Parameters:
-    -----------
-    ax : matplotlib.axes.Axes
-        The axes object to format
-    time_format : str, optional
-        strftime format string for time labels (default: '%H:%M')
-    interval_minutes : int, optional
-        Interval in minutes for major tick marks (default: 15)
-    """
-    myFmt = mdates.DateFormatter(time_format)
-    ax.xaxis.set_major_formatter(myFmt)
-    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=interval_minutes))
-
 
 # Mode-specific configuration parameters
 # Each mode includes filter limits, search limits, and plotting parameters
@@ -96,6 +127,10 @@ MODE_CONFIGS = {
     }
 }
 
+
+# ============================================================================
+# Core Data Classes
+# ============================================================================
 
 class PathInfo:
     """
@@ -228,44 +263,6 @@ class PathInfo:
                 from hf_tdoa import locator
                 return locator
 
-    def get_tx_latlon(self):
-        """
-        Get transmitter coordinates from grid square.
-
-        Returns:
-        --------
-        tuple
-            (latitude, longitude) in degrees
-        """
-        locator = self._import_locator()
-        lat, lon = locator.gridsquare2latlon(self.tx_grid, position='center')
-        return (_ensure_scalar(lat), _ensure_scalar(lon))
-
-    def get_rx_latlon(self):
-        """
-        Get receiver coordinates from grid square.
-
-        Returns:
-        --------
-        tuple
-            (latitude, longitude) in degrees
-        """
-        locator = self._import_locator()
-        lat, lon = locator.gridsquare2latlon(self.rx_grid, position='center')
-        return (_ensure_scalar(lat), _ensure_scalar(lon))
-
-    def get_midpoint(self):
-        """
-        Calculate the great circle midpoint between TX and RX stations.
-
-        Returns:
-        --------
-        tuple
-            (midpoint_lat, midpoint_lon) in degrees
-        """
-        locator = self._import_locator()
-        return locator.gridsquare_midpoint(self.tx_grid, self.rx_grid)
-
     def _import_geopack(self):
         """
         Import geopack module directly to avoid astropy dependency issues.
@@ -306,6 +303,44 @@ class PathInfo:
             except ImportError:
                 from hf_tdoa import geopack
                 return geopack
+
+    def get_tx_latlon(self):
+        """
+        Get transmitter coordinates from grid square.
+
+        Returns:
+        --------
+        tuple
+            (latitude, longitude) in degrees
+        """
+        locator = self._import_locator()
+        lat, lon = locator.gridsquare2latlon(self.tx_grid, position='center')
+        return (_ensure_scalar(lat), _ensure_scalar(lon))
+
+    def get_rx_latlon(self):
+        """
+        Get receiver coordinates from grid square.
+
+        Returns:
+        --------
+        tuple
+            (latitude, longitude) in degrees
+        """
+        locator = self._import_locator()
+        lat, lon = locator.gridsquare2latlon(self.rx_grid, position='center')
+        return (_ensure_scalar(lat), _ensure_scalar(lon))
+
+    def get_midpoint(self):
+        """
+        Calculate the great circle midpoint between TX and RX stations.
+
+        Returns:
+        --------
+        tuple
+            (midpoint_lat, midpoint_lon) in degrees
+        """
+        locator = self._import_locator()
+        return locator.gridsquare_midpoint(self.tx_grid, self.rx_grid)
 
     def get_path_azimuth(self):
         """
@@ -495,20 +530,9 @@ class PathInfo:
                 f"Range: {range_km:.1f} km, Band: {self.band_str})")
 
 
-def setup_plotting_style():
-    """Sets default style and font parameters for plots."""
-    mpl.rcParams['font.size']          = 16
-    mpl.rcParams['font.weight']        = 'bold'
-    mpl.rcParams['axes.labelweight']   = 'bold'
-    mpl.rcParams['axes.titleweight']   = 'bold'
-    mpl.rcParams['figure.labelweight'] = 'bold'
-    mpl.rcParams['figure.titleweight'] = 'bold'
-    mpl.rcParams['axes.grid']          = True
-    mpl.rcParams['grid.linestyle']     = ':'
-    mpl.rcParams['figure.figsize']     = (12,9)
-    mpl.rcParams['axes.xmargin']       = 0
-    mpl.rcParams['axes.ymargin']       = 0.1
-
+# ============================================================================
+# Data Loading Functions
+# ============================================================================
 
 def obtain_wav_list(directory):
     """
@@ -562,6 +586,77 @@ def load_wav(fname, normalize=True):
 
     return df, fs
 
+
+def load_ionosonde_data(csv_path=None):
+    """
+    Loads ionosonde data from a CSV file.
+
+    The CSV file should have columns: UTC, foF2, foF1, foE, hmF2, hmF1, hmE
+    Header lines starting with # are automatically skipped.
+
+    Arguments:
+    csv_path : str, optional
+        Path to the ionosonde CSV file.
+        If None, uses default Austin TX ionosonde data.
+
+    Returns:
+    ionosonde_df : pd.DataFrame
+        DataFrame containing ionosonde data with datetime index named 'UTC'.
+        Columns include: foF2, foF1, foE, hmF2, hmF1, hmE (as available in the file).
+    """
+    # If no path provided, use default relative to package root
+    if csv_path is None:
+        # Get the directory containing this file (hf_tdoa package directory)
+        package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv')
+
+    # Load CSV file, skipping comment lines starting with #
+    ionosonde_df = pd.read_csv(csv_path, comment='#', parse_dates=['UTC'])
+    ionosonde_df = ionosonde_df.set_index('UTC')
+
+    return ionosonde_df
+
+
+def load_tdoa_csv(csv_path, model_coeffs):
+    """
+    Loads TDOA data from a CSV file and applies the HF TDOA model to convert to layer heights.
+
+    The CSV file should have columns:
+    - utc: timestamp in ISO format (e.g., '2024-04-08 14:13:00')
+    - manualBeatNote_TDOA_ms: Manual Period Analysis TDOA values in milliseconds
+    - autoCorrelation_TDOA_ms: Auto-Correlated Analysis TDOA values in milliseconds
+
+    Arguments:
+    csv_path : str
+        Path to the CSV file containing TDOA data.
+    model_coeffs : tuple
+        Tuple of (slope, intercept) for the TDOA model.
+        Layer height = slope * TDOA_ms + intercept
+
+    Returns:
+    tdoa_df : pd.DataFrame
+        DataFrame containing:
+        - UTC datetime index
+        - manualBeatNote_TDOA_ms: Original TDOA values in ms
+        - autoCorrelation_TDOA_ms: Original TDOA values in ms
+        - manualBeatNote_height_km: Layer heights from manual analysis
+        - autoCorrelation_height_km: Layer heights from auto-correlation
+    """
+    # Load CSV with datetime parsing
+    tdoa_df = pd.read_csv(csv_path, parse_dates=['utc'])
+    tdoa_df = tdoa_df.set_index('utc')
+
+    # Apply TDOA model to convert TDOA to layer heights
+    slope, intercept = model_coeffs
+    tdoa_df['manualBeatNote_height_km'] = slope * tdoa_df['manualBeatNote_TDOA_ms'] + intercept
+    tdoa_df['autoCorrelation_height_km'] = slope * tdoa_df['autoCorrelation_TDOA_ms'] + intercept
+
+    return tdoa_df
+
+
+# ============================================================================
+# Signal Processing Functions
+# ============================================================================
 
 def filter(wav_df, low_pass_freq=250, high_pass_freq=10):
     """
@@ -621,6 +716,90 @@ def filter(wav_df, low_pass_freq=250, high_pass_freq=10):
 
     return env_2, fs
 
+
+def chirp_fft(df, tlim=None):
+    """
+    Calculates the FFT of a chirp signal.
+
+    Arguments:
+    df : pd.DataFrame
+        DataFrame containing the chirp signal with time index and 'x' column.
+    tlim : tuple, optional
+        Time limits (start, end) to select a portion of the signal for FFT calculation. If None, uses the entire signal.
+
+    Returns:
+    X_psd : np.ndarray
+        Power Spectral Density of the chirp signal.
+    f : np.ndarray
+        Frequency vector corresponding to the PSD.
+    """
+    env    = df['x']
+    tvec = df.index
+    Ts   = tvec[1] - tvec[0]
+    Fs   = 1/Ts
+
+    if tlim is None:
+        tlim = (0, np.max(tvec))
+
+    tf  = np.logical_and(tvec >= tlim[0], tvec <  tlim[1])
+    xt  = env[tf].copy()
+
+    han_win = np.hanning(len(xt))
+    x_han   = han_win*xt
+    nfft    = len(x_han)
+    if nfft < 2**16:
+        nfft = 2**16
+
+    X_psd   = np.abs(np.fft.fftshift(np.fft.fft(x_han, n=nfft)*Ts*2))**2
+    f       = np.fft.fftshift(np.fft.fftfreq(nfft, Ts))
+
+    return X_psd, f
+
+
+def find_max(freq, X_psd, minfreq, maxfreq):
+    """
+    Finds the maximum peak in a power spectral density within a frequency range.
+
+    Arguments:
+    freq : np.ndarray
+        Frequency vector.
+    X_psd : np.ndarray
+        Power spectral density values.
+    minfreq : float
+        Minimum frequency for peak search.
+    maxfreq : float
+        Maximum frequency for peak search.
+
+    Returns:
+    maximum_x : float
+        Frequency of maximum peak (or NaN if none found).
+    maximum_y : float
+        Amplitude of maximum peak (or NaN if none found).
+    local_peaks_x : np.ndarray
+        Frequencies of all peaks in range.
+    local_peaks_y : np.ndarray
+        Amplitudes of all peaks in range.
+    """
+    peaks = signal.find_peaks(X_psd)[0]
+    local_peaks = pd.DataFrame({'f':freq[peaks], 'X_psd':X_psd[peaks]})
+    local_peaks = local_peaks.sort_values(by='X_psd', ascending=False)
+
+    local_peaks_x = local_peaks.f[local_peaks.f>minfreq][local_peaks.f<maxfreq].values
+    local_peaks_y = local_peaks.X_psd[local_peaks.f>minfreq][local_peaks.f<maxfreq].values
+
+    if len(local_peaks_x) > 0:
+        maximum_x = local_peaks_x[0]
+        maximum_y = local_peaks_y[0]
+    else:
+        maximum_x = np.nan
+        maximum_y = np.nan
+
+    return maximum_x, maximum_y, local_peaks_x, local_peaks_y
+
+
+# ============================================================================
+# TDOA Analysis Functions
+# ============================================================================
 
 def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False):
     """
@@ -742,195 +921,6 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     print(f"✓ Completed chirp detection: {len(chirps)} files processed, {len(chirps)*10} total chirps found\n")
 
     return chirps
-
-
-def find_max(freq, X_psd, minfreq, maxfreq):
-    """
-    Finds the maximum peak in a power spectral density within a frequency range.
-
-    Arguments:
-    freq : np.ndarray
-        Frequency vector.
-    X_psd : np.ndarray
-        Power spectral density values.
-    minfreq : float
-        Minimum frequency for peak search.
-    maxfreq : float
-        Maximum frequency for peak search.
-
-    Returns:
-    maximum_x : float
-        Frequency of maximum peak (or NaN if none found).
-    maximum_y : float
-        Amplitude of maximum peak (or NaN if none found).
-    local_peaks_x : np.ndarray
-        Frequencies of all peaks in range.
-    local_peaks_y : np.ndarray
-        Amplitudes of all peaks in range.
-    """
-    peaks = signal.find_peaks(X_psd)[0]
-    local_peaks = pd.DataFrame({'f':freq[peaks], 'X_psd':X_psd[peaks]})
-    local_peaks = local_peaks.sort_values(by='X_psd', ascending=False)
-
-    local_peaks_x = local_peaks.f[local_peaks.f>minfreq][local_peaks.f<maxfreq].values
-    local_peaks_y = local_peaks.X_psd[local_peaks.f>minfreq][local_peaks.f<maxfreq].values
-
-    if len(local_peaks_x) > 0:
-        maximum_x = local_peaks_x[0]
-        maximum_y = local_peaks_y[0]
-    else:
-        maximum_x = np.nan
-        maximum_y = np.nan
-
-    return maximum_x, maximum_y, local_peaks_x, local_peaks_y
-
-
-def chirp_fft(df, tlim=None):
-    """
-    Calculates the FFT of a chirp signal.
-
-    Arguments:
-    df : pd.DataFrame
-        DataFrame containing the chirp signal with time index and 'x' column.
-    tlim : tuple, optional
-        Time limits (start, end) to select a portion of the signal for FFT calculation. If None, uses the entire signal.
-
-    Returns:
-    X_psd : np.ndarray
-        Power Spectral Density of the chirp signal.
-    f : np.ndarray
-        Frequency vector corresponding to the PSD.
-    """
-    env    = df['x']
-    tvec = df.index
-    Ts   = tvec[1] - tvec[0]
-    Fs   = 1/Ts
-
-    if tlim is None:
-        tlim = (0, np.max(tvec))
-
-    tf  = np.logical_and(tvec >= tlim[0], tvec <  tlim[1])
-    xt  = env[tf].copy()
-
-    han_win = np.hanning(len(xt))
-    x_han   = han_win*xt
-    nfft    = len(x_han)
-    if nfft < 2**16:
-        nfft = 2**16
-
-    X_psd   = np.abs(np.fft.fftshift(np.fft.fft(x_han, n=nfft)*Ts*2))**2
-    f       = np.fft.fftshift(np.fft.fftfreq(nfft, Ts))
-
-    return X_psd, f
-
-
-def plot_chirp_fft(title, tlim, minfreq, maxfreq, wav_df, sweep_rate, env, tvec, X_psd, f):
-    """
-    Plots the FFT of a chirp signal along with its envelope and raw waveform.
-
-    Arguments:
-    title : str
-        Title for the plot.
-    tlim : tuple
-        Time limits (start, end) for the chirp signal.
-    minfreq : float
-        Minimum frequency for FFT plot.
-    maxfreq : float
-        Maximum frequency for FFT plot.
-    wav_df : pd.DataFrame or None
-        DataFrame containing the raw WAV signal. If None, raw signal is not plotted.
-    sweep_rate : float
-        Sweep rate in Hz/ms for TDOA calculations.
-    env : pd.Series
-        Envelope of the chirp signal.
-    tvec : np.ndarray
-        Time vector corresponding to the envelope.
-    X_psd : np.ndarray
-        Power Spectral Density of the chirp signal.
-    f : np.ndarray
-        Frequency vector corresponding to the PSD.
-    """
-    if maxfreq == 0:
-        maxfreq = 10000
-    flim = (0, maxfreq)
-
-    nrows = 3
-    nax   = 0
-    fig = plt.figure(figsize=(15,15))
-
-    nax += 1
-    ax  = fig.add_subplot(nrows, 1, nax)
-    if wav_df is not None:
-        xx = wav_df.index
-        yy = wav_df['x']
-        ax.plot(xx, yy)
-        ax.set_xlabel('Time [s]')
-        ax.set_ylabel('Amplitude')
-        ax.axvspan(*tlim, color='red', label='Selected Chirp')
-        ax.legend(loc='upper right')
-
-    nax += 1
-    ax  = fig.add_subplot(nrows, 1, nax)
-
-    dc_offset = 0
-    if wav_df is not None:
-        tf  = np.logical_and(wav_df.index >= tlim[0], wav_df.index <  tlim[1])
-        wav_xx = wav_df.index[tf]
-        wav_yy = wav_df['x'][tf]
-        ax.plot(wav_xx, wav_yy, label='Raw WAV')
-        dc_offset = np.mean(np.abs(wav_yy))
-
-    env_xx = tvec
-    env_yy = env + dc_offset
-    ax.plot(env_xx, env_yy, lw=3, color='red', label='Filtered Envelope')
-    ax.set_xlim(tlim)
-    ax.set_xlabel('Time [s]')
-    ax.set_ylabel('Amplitude')
-    ax.legend(loc='upper right')
-    ax.set_ylim(0, None)
-
-    nax += 1
-    ax = fig.add_subplot(nrows, 1, nax)
-    ax.plot(f, X_psd)
-
-    maximum_x, maximum_y, local_peaks_x, local_peaks_y = find_max(f, X_psd, minfreq, maxfreq)
-
-    ax.plot([maximum_x, maximum_x], [0, maximum_y], linewidth=2)
-    ax.plot([0, maximum_x], [maximum_y, maximum_y], linewidth=2, color='red')
-    ax.plot([minfreq, minfreq], [0, maximum_y], linewidth=3, color='black')
-
-    lbl = []
-    lbl.append(f'$f_b = {maximum_x:0.2f}$ Hz')
-    lbl.append(f'TDOA = {maximum_x/sweep_rate:0.2f} ms')
-    ax.scatter(maximum_x, maximum_y, linewidths=5, label='\n'.join(lbl), color='green')
-    ax.scatter(local_peaks_x, local_peaks_y, color='black')
-    ax.set_xlim(flim)
-    ax.set_ylim(0, 10*10**-5)
-    ax.set_xlabel('Frequency [Hz]')
-    ax.set_ylabel('$|X(f)|^2$')
-
-    # Make x-labels with both beat frequency and TDOA values.
-    xticks = ax.get_xticks()
-    ax.set_xticks(xticks)
-    xtls = []
-    for xtk in xticks:
-        tdoa = xtk/sweep_rate
-        xtl = f'{xtk:0.1f}\n{tdoa:0.1f}'
-        xtls.append(xtl)
-    xtls[-1] = 'f [Hz]\nTDOA [ms]'
-    ax.set_xticklabels(xtls)
-    ax.set_xlabel('')
-
-    ax.legend()
-
-    _title = []
-    _title.append(title)
-    _title.append(f'Chirp Sweep Rate: {sweep_rate} Hz/ms')
-    plt.suptitle('\n'.join(_title))
-
-    plt.tight_layout()
-    plt.show()
-    plt.close(fig)
 
 
 def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
@@ -1067,45 +1057,6 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     return wav_data
 
 
-def title_from_pfx(ax, pfx, date=None, center_title=None):
-    """
-    Creates a formatted title for plots based on the prefix string.
-
-    Arguments:
-    ax : matplotlib.axes.Axes
-        The axes object to add the title to.
-    pfx : str or PathInfo
-        Prefix string containing TX/RX station information, or a PathInfo object.
-    date : datetime.datetime, optional
-        Date to display in the center title.
-    center_title : str, optional
-        Custom text to display above the date in the center title (e.g., 'TDOA' or 'Ionospheric Layer Height').
-        If provided, creates a two-line center title with this text on top and the date below.
-    """
-    # Accept either a string or a PathInfo object
-    if isinstance(pfx, str):
-        path_info = PathInfo(pfx)
-    else:
-        path_info = pfx
-
-    title = f'TX: {path_info.tx_call} ({path_info.tx_grid})\nRX: {path_info.rx_call} ({path_info.rx_grid})'
-    ax.set_title(title, loc='left')
-
-    range_km = path_info.get_range_km()
-    title = f'Ground Range: {range_km:.0f} km\nBand: {path_info.band_str}'
-    ax.set_title(title, loc='right')
-
-    if date is not None:
-        date_str = date.strftime('%Y %b %d')
-        if center_title is not None:
-            # Two-line center title with custom text on top and date below
-            center_text = f'{center_title}\n{date_str}'
-        else:
-            # Just the date
-            center_text = date_str
-        ax.set_title(center_text, loc='center', fontsize=26)
-
-
 def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
     """
     Build a TDOA configuration dictionary for use with plot_TDOAs and plot_hmf2.
@@ -1160,6 +1111,214 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
 
     return tdoa_dct
 
+
+# ============================================================================
+# Plotting Utility Functions
+# ============================================================================
+
+def _ensure_scalar(value):
+    """
+    Convert numpy array to scalar if needed.
+
+    Parameters:
+    -----------
+    value : float or np.ndarray
+        Value that may be a scalar or numpy array
+
+    Returns:
+    --------
+    float
+        Scalar value
+    """
+    if not np.isscalar(value):
+        return float(value.item())
+    return float(value)
+
+
+def _format_datetime_axis(ax, time_format='%H:%M', interval_minutes=15):
+    """
+    Format datetime x-axis with consistent styling.
+
+    Parameters:
+    -----------
+    ax : matplotlib.axes.Axes
+        The axes object to format
+    time_format : str, optional
+        strftime format string for time labels (default: '%H:%M')
+    interval_minutes : int, optional
+        Interval in minutes for major tick marks (default: 15)
+    """
+    myFmt = mdates.DateFormatter(time_format)
+    ax.xaxis.set_major_formatter(myFmt)
+    ax.xaxis.set_major_locator(mdates.MinuteLocator(interval=interval_minutes))
+
+
+def setup_plotting_style():
+    """Sets default style and font parameters for plots."""
+    mpl.rcParams['font.size']          = 16
+    mpl.rcParams['font.weight']        = 'bold'
+    mpl.rcParams['axes.labelweight']   = 'bold'
+    mpl.rcParams['axes.titleweight']   = 'bold'
+    mpl.rcParams['figure.labelweight'] = 'bold'
+    mpl.rcParams['figure.titleweight'] = 'bold'
+    mpl.rcParams['axes.grid']          = True
+    mpl.rcParams['grid.linestyle']     = ':'
+    mpl.rcParams['figure.figsize']     = (12,9)
+    mpl.rcParams['axes.xmargin']       = 0
+    mpl.rcParams['axes.ymargin']       = 0.1
+
+
+def title_from_pfx(ax, pfx, date=None, center_title=None):
+    """
+    Creates a formatted title for plots based on the prefix string.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to add the title to.
+    pfx : str or PathInfo
+        Prefix string containing TX/RX station information, or a PathInfo object.
+    date : datetime.datetime, optional
+        Date to display in the center title.
+    center_title : str, optional
+        Custom text to display above the date in the center title (e.g., 'TDOA' or 'Ionospheric Layer Height').
+        If provided, creates a two-line center title with this text on top and the date below.
+    """
+    # Accept either a string or a PathInfo object
+    if isinstance(pfx, str):
+        path_info = PathInfo(pfx)
+    else:
+        path_info = pfx
+
+    title = f'TX: {path_info.tx_call} ({path_info.tx_grid})\nRX: {path_info.rx_call} ({path_info.rx_grid})'
+    ax.set_title(title, loc='left')
+
+    range_km = path_info.get_range_km()
+    title = f'Ground Range: {range_km:.0f} km\nBand: {path_info.band_str}'
+    ax.set_title(title, loc='right')
+
+    if date is not None:
+        date_str = date.strftime('%Y %b %d')
+        if center_title is not None:
+            # Two-line center title with custom text on top and date below
+            center_text = f'{center_title}\n{date_str}'
+        else:
+            # Just the date
+            center_text = date_str
+        ax.set_title(center_text, loc='center', fontsize=26)
+
+
+def plot_chirp_fft(title, tlim, minfreq, maxfreq, wav_df, sweep_rate, env, tvec, X_psd, f):
+    """
+    Plots the FFT of a chirp signal along with its envelope and raw waveform.
+
+    Arguments:
+    title : str
+        Title for the plot.
+    tlim : tuple
+        Time limits (start, end) for the chirp signal.
+    minfreq : float
+        Minimum frequency for FFT plot.
+    maxfreq : float
+        Maximum frequency for FFT plot.
+    wav_df : pd.DataFrame or None
+        DataFrame containing the raw WAV signal. If None, raw signal is not plotted.
+    sweep_rate : float
+        Sweep rate in Hz/ms for TDOA calculations.
+    env : pd.Series
+        Envelope of the chirp signal.
+    tvec : np.ndarray
+        Time vector corresponding to the envelope.
+    X_psd : np.ndarray
+        Power Spectral Density of the chirp signal.
+    f : np.ndarray
+        Frequency vector corresponding to the PSD.
+    """
+    if maxfreq == 0:
+        maxfreq = 10000
+    flim = (0, maxfreq)
+
+    nrows = 3
+    nax   = 0
+    fig = plt.figure(figsize=(15,15))
+
+    nax += 1
+    ax  = fig.add_subplot(nrows, 1, nax)
+    if wav_df is not None:
+        xx = wav_df.index
+        yy = wav_df['x']
+        ax.plot(xx, yy)
+        ax.set_xlabel('Time [s]')
+        ax.set_ylabel('Amplitude')
+        ax.axvspan(*tlim, color='red', label='Selected Chirp')
+        ax.legend(loc='upper right')
+
+    nax += 1
+    ax  = fig.add_subplot(nrows, 1, nax)
+
+    dc_offset = 0
+    if wav_df is not None:
+        tf  = np.logical_and(wav_df.index >= tlim[0], wav_df.index <  tlim[1])
+        wav_xx = wav_df.index[tf]
+        wav_yy = wav_df['x'][tf]
+        ax.plot(wav_xx, wav_yy, label='Raw WAV')
+        dc_offset = np.mean(np.abs(wav_yy))
+
+    env_xx = tvec
+    env_yy = env + dc_offset
+    ax.plot(env_xx, env_yy, lw=3, color='red', label='Filtered Envelope')
+    ax.set_xlim(tlim)
+    ax.set_xlabel('Time [s]')
+    ax.set_ylabel('Amplitude')
+    ax.legend(loc='upper right')
+    ax.set_ylim(0, None)
+
+    nax += 1
+    ax = fig.add_subplot(nrows, 1, nax)
+    ax.plot(f, X_psd)
+
+    maximum_x, maximum_y, local_peaks_x, local_peaks_y = find_max(f, X_psd, minfreq, maxfreq)
+
+    ax.plot([maximum_x, maximum_x], [0, maximum_y], linewidth=2)
+    ax.plot([0, maximum_x], [maximum_y, maximum_y], linewidth=2, color='red')
+    ax.plot([minfreq, minfreq], [0, maximum_y], linewidth=3, color='black')
+
+    lbl = []
+    lbl.append(f'$f_b = {maximum_x:0.2f}$ Hz')
+    lbl.append(f'TDOA = {maximum_x/sweep_rate:0.2f} ms')
+    ax.scatter(maximum_x, maximum_y, linewidths=5, label='\n'.join(lbl), color='green')
+    ax.scatter(local_peaks_x, local_peaks_y, color='black')
+    ax.set_xlim(flim)
+    ax.set_ylim(0, 10*10**-5)
+    ax.set_xlabel('Frequency [Hz]')
+    ax.set_ylabel('$|X(f)|^2$')
+
+    # Make x-labels with both beat frequency and TDOA values.
+    xticks = ax.get_xticks()
+    ax.set_xticks(xticks)
+    xtls = []
+    for xtk in xticks:
+        tdoa = xtk/sweep_rate
+        xtl = f'{xtk:0.1f}\n{tdoa:0.1f}'
+        xtls.append(xtl)
+    xtls[-1] = 'f [Hz]\nTDOA [ms]'
+    ax.set_xticklabels(xtls)
+    ax.set_xlabel('')
+
+    ax.legend()
+
+    _title = []
+    _title.append(title)
+    _title.append(f'Chirp Sweep Rate: {sweep_rate} Hz/ms')
+    plt.suptitle('\n'.join(_title))
+
+    plt.tight_layout()
+    plt.show()
+    plt.close(fig)
+
+
+# ============================================================================
+# Main Plotting Functions - TDOA
+# ============================================================================
 
 def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True, legend_offset=-0.06):
     """
@@ -1259,173 +1418,9 @@ def plot_TDOAs(chirps, tdoa_dct, ylim=(0,3), savefig=None):
     plt.close(fig)
 
 
-def load_ionosonde_data(csv_path):
-    """
-    Loads ionosonde data from a CSV file.
-
-    Arguments:
-    csv_path : str
-        Path to the ionosonde CSV file. Expected columns: UTC, hmE, hmF2.
-
-    Returns:
-    ionosonde_df : pd.DataFrame
-        DataFrame containing ionosonde data with datetime index.
-    """
-    ionosonde_df = pd.read_csv(csv_path, parse_dates=['UTC'])
-    return ionosonde_df
-
-
-def overlay_ionosonde(ax, csv_path=None,
-                      overlay_hmF2=True, overlay_hmE=True,
-                      label='Austin Ionosonde',
-                      hmF2_color='purple', hmE_color='brown'):
-    """
-    Overlays ionosonde data (hmF2 and hmE) on an existing axes.
-
-    Arguments:
-    ax : matplotlib.axes.Axes
-        The axes object to plot on.
-    csv_path : str, optional
-        Path to the ionosonde CSV file. If None, uses default path relative to package.
-    overlay_hmF2 : bool, optional
-        If True, overlay hmF2 data. Default is True.
-    overlay_hmE : bool, optional
-        If True, overlay hmE data. Default is True.
-    label : str, optional
-        Label prefix for the ionosonde data. Default is 'Austin Ionosonde'.
-    hmF2_color : str, optional
-        Color for hmF2 line. Default is 'purple'.
-    hmE_color : str, optional
-        Color for hmE line. Default is 'brown'.
-    """
-    # If no path provided, use default relative to package root
-    if csv_path is None:
-        # Get the directory containing this file (hf_tdoa package directory)
-        package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv')
-
-    ionosonde_df = load_ionosonde_data(csv_path)
-
-    if overlay_hmF2:
-        ax.plot(ionosonde_df['UTC'], ionosonde_df['hmF2'], color=hmF2_color,
-                label=f"{label} hmF2", linewidth=2)
-
-    if overlay_hmE:
-        ax.plot(ionosonde_df['UTC'], ionosonde_df['hmE'], color=hmE_color,
-                label=f"{label} hmE", linewidth=2)
-
-
-def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv',
-                             overlay_hmF2=True, overlay_hmE=True):
-    """
-    Overlays Austin, TX ionosonde data (hmF2 and hmE) on an existing axes.
-
-    This is a convenience wrapper around overlay_ionosonde() with Austin-specific defaults.
-
-    Arguments:
-    ax : matplotlib.axes.Axes
-        The axes object to plot on.
-    csv_path : str, optional
-        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_Austin_TX_Ionosonde_hmE_hmF2.csv'.
-    overlay_hmF2 : bool, optional
-        If True, overlay hmF2 data. Default is True.
-    overlay_hmE : bool, optional
-        If True, overlay hmE data. Default is True.
-    """
-    overlay_ionosonde(ax, csv_path=csv_path, overlay_hmF2=overlay_hmF2,
-                     overlay_hmE=overlay_hmE, label='Austin Ionosonde',
-                     hmF2_color='purple', hmE_color='brown')
-
-
-def load_tdoa_csv(csv_path, model_coeffs):
-    """
-    Loads TDOA data from a CSV file and applies the HF TDOA model to convert to layer heights.
-
-    The CSV file should have columns:
-    - utc: timestamp in ISO format (e.g., '2024-04-08 14:13:00')
-    - manualBeatNote_TDOA_ms: Manual Period Analysis TDOA values in milliseconds
-    - autoCorrelation_TDOA_ms: Auto-Correlated Analysis TDOA values in milliseconds
-
-    Arguments:
-    csv_path : str
-        Path to the CSV file containing TDOA data.
-    model_coeffs : tuple
-        Tuple of (slope, intercept) for the TDOA model.
-        Layer height = slope * TDOA_ms + intercept
-
-    Returns:
-    tdoa_df : pd.DataFrame
-        DataFrame containing:
-        - UTC datetime index
-        - manualBeatNote_TDOA_ms: Original TDOA values in ms
-        - autoCorrelation_TDOA_ms: Original TDOA values in ms
-        - manualBeatNote_height_km: Layer heights from manual analysis
-        - autoCorrelation_height_km: Layer heights from auto-correlation
-    """
-    # Load CSV with datetime parsing
-    tdoa_df = pd.read_csv(csv_path, parse_dates=['utc'])
-    tdoa_df = tdoa_df.set_index('utc')
-
-    # Apply TDOA model to convert TDOA to layer heights
-    slope, intercept = model_coeffs
-    tdoa_df['manualBeatNote_height_km'] = slope * tdoa_df['manualBeatNote_TDOA_ms'] + intercept
-    tdoa_df['autoCorrelation_height_km'] = slope * tdoa_df['autoCorrelation_TDOA_ms'] + intercept
-
-    return tdoa_df
-
-
-def overlay_tdoa_csv(ax, csv_path, model_coeffs,
-                     overlay_manual=True, overlay_autocorr=True,
-                     manual_label='Manual Period Analysis',
-                     autocorr_label='Auto-Correlated Analysis',
-                     manual_color='tab:blue', manual_linestyle='dotted',
-                     autocorr_color='tab:orange', autocorr_linestyle='dashdot'):
-    """
-    Overlays TDOA data from CSV files on an existing axes.
-
-    This function loads TDOA measurements from CSV files and applies the HF TDOA model
-    to convert them to layer heights before plotting.
-
-    Arguments:
-    ax : matplotlib.axes.Axes
-        The axes object to plot on.
-    csv_path : str
-        Path to the CSV file containing TDOA data.
-    model_coeffs : tuple
-        Tuple of (slope, intercept) for the TDOA model.
-    overlay_manual : bool, optional
-        If True, overlay manual period analysis data. Default is True.
-    overlay_autocorr : bool, optional
-        If True, overlay auto-correlated analysis data. Default is True.
-    manual_label : str, optional
-        Label for manual analysis data. Default is 'Manual Period Analysis'.
-    autocorr_label : str, optional
-        Label for auto-correlation data. Default is 'Auto-Correlated Analysis'.
-    manual_color : str, optional
-        Color for manual analysis line. Default is 'tab:blue'.
-    manual_linestyle : str, optional
-        Linestyle for manual analysis. Default is 'dotted'.
-    autocorr_color : str, optional
-        Color for auto-correlation line. Default is 'tab:orange'.
-    autocorr_linestyle : str, optional
-        Linestyle for auto-correlation. Default is 'dashdot'.
-    """
-    tdoa_df = load_tdoa_csv(csv_path, model_coeffs)
-
-    if overlay_manual:
-        ax.plot(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
-                color=manual_color, linestyle=manual_linestyle,
-                label=manual_label, linewidth=2)
-        ax.scatter(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
-                   color=manual_color)
-
-    if overlay_autocorr:
-        ax.plot(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
-                color=autocorr_color, linestyle=autocorr_linestyle,
-                label=autocorr_label, linewidth=2)
-        ax.scatter(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
-                   color=autocorr_color)
-
+# ============================================================================
+# Main Plotting Functions - Layer Heights (hmf2)
+# ============================================================================
 
 def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
                        solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
@@ -1546,7 +1541,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
     title_from_pfx(ax, path_info, date, center_title='Ionospheric Layer Height')
 
 
-def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
+def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
               solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
               overlay_solar_elevation=False, overlay_eclipse=False,
               ionosonde_dct=None, tdoa_csv_dct=None, savefig=None):
@@ -1560,6 +1555,8 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         Dictionary containing TDOA set configurations with model coefficients and plotting parameters.
     ylim : tuple, optional
         Y-axis limits for the plot. Default is (75, 450).
+    xlim : tuple of datetime, optional
+        X-axis limits for the plot as (start_datetime, end_datetime). Default is None (auto).
     solar_lat : float, optional
         Latitude for solar calculations (degrees, +N/-S). Required if overlay_solar_elevation or overlay_eclipse is True.
     solar_lon : float, optional
@@ -1620,6 +1617,10 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
         show_date=True
     )
 
+    # Set x-axis limits if provided
+    if xlim is not None:
+        ax.set_xlim(xlim)
+
     fig.autofmt_xdate()
     plt.tight_layout()
 
@@ -1631,6 +1632,10 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450),
     plt.show()
     plt.close(fig)
 
+
+# ============================================================================
+# Advanced Multi-Panel Plotting Functions
+# ============================================================================
 
 def plot_hmf2_subplot(chirps_list, tdoa_dct_list, subplot_labels=None, ylim=(200, 350), xlim=None,
                       solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
@@ -1876,3 +1881,122 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
 
     plt.show()
     plt.close(fig)
+
+
+# ============================================================================
+# Data Overlay Functions for Validation
+# ============================================================================
+
+def overlay_ionosonde(ax, csv_path=None,
+                      overlay_hmF2=True, overlay_hmE=True,
+                      label='Austin Ionosonde',
+                      hmF2_color='purple', hmE_color='brown'):
+    """
+    Overlays ionosonde data (hmF2 and hmE) on an existing axes.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    csv_path : str, optional
+        Path to the ionosonde CSV file. If None, uses default path relative to package.
+    overlay_hmF2 : bool, optional
+        If True, overlay hmF2 data. Default is True.
+    overlay_hmE : bool, optional
+        If True, overlay hmE data. Default is True.
+    label : str, optional
+        Label prefix for the ionosonde data. Default is 'Austin Ionosonde'.
+    hmF2_color : str, optional
+        Color for hmF2 line. Default is 'purple'.
+    hmE_color : str, optional
+        Color for hmE line. Default is 'brown'.
+    """
+    # If no path provided, use default relative to package root
+    if csv_path is None:
+        # Get the directory containing this file (hf_tdoa package directory)
+        package_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        csv_path = os.path.join(package_dir, 'data', 'CSVs', '2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv')
+
+    ionosonde_df = load_ionosonde_data(csv_path)
+
+    if overlay_hmF2:
+        ax.plot(ionosonde_df.index, ionosonde_df['hmF2'], color=hmF2_color,
+                label=f"{label} hmF2", linewidth=2)
+
+    if overlay_hmE:
+        ax.plot(ionosonde_df.index, ionosonde_df['hmE'], color=hmE_color,
+                label=f"{label} hmE", linewidth=2)
+
+
+def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv',
+                             overlay_hmF2=True, overlay_hmE=True):
+    """
+    Overlays Austin, TX ionosonde data (hmF2 and hmE) on an existing axes.
+
+    This is a convenience wrapper around overlay_ionosonde() with Austin-specific defaults.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    csv_path : str, optional
+        Path to the ionosonde CSV file. Default is 'data/CSVs/2024-04-08_AU930_AustinTX_Ionosonde_ManualScaled.csv'.
+    overlay_hmF2 : bool, optional
+        If True, overlay hmF2 data. Default is True.
+    overlay_hmE : bool, optional
+        If True, overlay hmE data. Default is True.
+    """
+    overlay_ionosonde(ax, csv_path=csv_path, overlay_hmF2=overlay_hmF2,
+                     overlay_hmE=overlay_hmE, label='Austin Ionosonde',
+                     hmF2_color='purple', hmE_color='brown')
+
+
+def overlay_tdoa_csv(ax, csv_path, model_coeffs,
+                     overlay_manual=True, overlay_autocorr=True,
+                     manual_label='Manual Period Analysis',
+                     autocorr_label='Auto-Correlated Analysis',
+                     manual_color='tab:blue', manual_linestyle='dotted',
+                     autocorr_color='tab:orange', autocorr_linestyle='dashdot'):
+    """
+    Overlays TDOA data from CSV files on an existing axes.
+
+    This function loads TDOA measurements from CSV files and applies the HF TDOA model
+    to convert them to layer heights before plotting.
+
+    Arguments:
+    ax : matplotlib.axes.Axes
+        The axes object to plot on.
+    csv_path : str
+        Path to the CSV file containing TDOA data.
+    model_coeffs : tuple
+        Tuple of (slope, intercept) for the TDOA model.
+    overlay_manual : bool, optional
+        If True, overlay manual period analysis data. Default is True.
+    overlay_autocorr : bool, optional
+        If True, overlay auto-correlated analysis data. Default is True.
+    manual_label : str, optional
+        Label for manual analysis data. Default is 'Manual Period Analysis'.
+    autocorr_label : str, optional
+        Label for auto-correlation data. Default is 'Auto-Correlated Analysis'.
+    manual_color : str, optional
+        Color for manual analysis line. Default is 'tab:blue'.
+    manual_linestyle : str, optional
+        Linestyle for manual analysis. Default is 'dotted'.
+    autocorr_color : str, optional
+        Color for auto-correlation line. Default is 'tab:orange'.
+    autocorr_linestyle : str, optional
+        Linestyle for auto-correlation. Default is 'dashdot'.
+    """
+    tdoa_df = load_tdoa_csv(csv_path, model_coeffs)
+
+    if overlay_manual:
+        ax.plot(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
+                color=manual_color, linestyle=manual_linestyle,
+                label=manual_label, linewidth=2)
+        ax.scatter(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
+                   color=manual_color)
+
+    if overlay_autocorr:
+        ax.plot(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
+                color=autocorr_color, linestyle=autocorr_linestyle,
+                label=autocorr_label, linewidth=2)
+        ax.scatter(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
+                   color=autocorr_color)
