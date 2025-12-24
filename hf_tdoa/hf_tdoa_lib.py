@@ -1888,14 +1888,15 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
     plt.subplots_adjust(hspace=0.4)
 
     # Add subplot labels AFTER layout adjustment
-    ax_tdoa.text(-0.08, 1.075, subplot_labels[0], transform=ax_tdoa.transAxes,
+    ypos = 1.100
+    ax_tdoa.text(-0.08, ypos, subplot_labels[0], transform=ax_tdoa.transAxes,
                 fontsize=30, fontweight='bold', va='top', ha='left')
 
-    ax_hmf2.text(-0.08, 1.075, subplot_labels[1], transform=ax_hmf2.transAxes,
+    ax_hmf2.text(-0.08, ypos, subplot_labels[1], transform=ax_hmf2.transAxes,
                 fontsize=30, fontweight='bold', va='top', ha='left')
 
     if image_panel is not None:
-        ax_img.text(-0.08, 1.075, subplot_labels[2], transform=ax_img.transAxes,
+        ax_img.text(-0.08, ypos, subplot_labels[2], transform=ax_img.transAxes,
                     fontsize=30, fontweight='bold', va='top', ha='left')
 
     # Save figure if filename provided
