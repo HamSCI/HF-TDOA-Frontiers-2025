@@ -15,8 +15,8 @@ The analysis uses cross-correlation techniques to detect chirp signals in WAV re
 
 This repository contains:
 
-- **15 figures** (Figures 1-15) with supporting materials for manuscript publication
-- **8 Jupyter notebooks** for computational figure generation and analysis
+- **14 figures** (Figures 1-13, 15) with supporting materials for manuscript publication
+- **10 Jupyter notebooks** for computational figure generation and analysis
 - **Complete HF TDOA analysis library** (`hf_tdoa` package) with core functionality
 - **Automated figure reproducibility testing** to verify computational results
 - **Validation notebooks** for ionosonde data quality assurance
@@ -90,13 +90,11 @@ jupyter lab
 │   ├── Expected Mode TDOA -Figure-B.xlsx
 │   └── fig_07_spreadsheet.jpg
 ├── fig_08/                      # Figure 8: Same path, different frequencies
-│   ├── fig_08_SamePathDiffFreq.jpg
-│   ├── fig_08_SamePathDiffFreq.pptx
-│   ├── fig_08a_virtual_heights.jpg
-│   └── fig_08b_critical_frequencies.jpg
+│   ├── fig_08.ipynb
+│   └── fig_08.jpg
 ├── fig_09/                      # Figure 9: Same frequency, different paths
-│   ├── fig_09_SameFreqDiffPath.jpg
-│   └── fig_09_SameFreqDiffPath.pptx
+│   ├── fig_09.ipynb
+│   └── fig_09.jpg
 ├── fig_10/                      # Figure 10: Statistical comparison
 │   ├── fig_10.jpg
 │   └── fig_10.pptx
@@ -106,10 +104,9 @@ jupyter lab
 ├── fig_12/                      # Figure 12: Dual-band comparison
 │   ├── fig_12.ipynb
 │   └── fig_12.jpg
-├── fig_13_14/                   # Figures 13-14: Multi-mode TDOA
-│   ├── fig_13_14.ipynb
-│   ├── fig_13.jpg
-│   └── fig_14.jpg
+├── fig_13/                      # Figure 13: Multi-mode TDOA
+│   ├── fig_13.ipynb
+│   └── fig_13.jpg
 ├── fig_15/                      # Figure 15: Etalon mode analysis
 │   ├── fig_15.ipynb
 │   ├── fig_15.jpg
@@ -128,10 +125,11 @@ jupyter lab
 │   │   └── N6RFM_10Hz_per_ms_template.wav
 │   └── CSVs/                    # Ionosonde and manual TDOA data
 ├── submitted_figures/           # Baseline figures for testing
+│   ├── fig_08.jpg
+│   ├── fig_09.jpg
 │   ├── fig_11.jpg
 │   ├── fig_12.jpg
 │   ├── fig_13.jpg
-│   ├── fig_14.jpg
 │   └── fig_15.jpg
 └── hf_tdoa/                     # HF TDOA analysis package
     ├── __init__.py              # Package initialization
@@ -231,7 +229,7 @@ The repository contains materials for generating all manuscript figures:
 
 - **Figures 1-2**: System diagrams and receiver setup (PowerPoint/JPG)
 - **Figure 6**: Virtual height geometry diagram (PowerPoint/JPG)
-- **Figures 7, 9-10**: Spreadsheet analyses and comparisons (Excel/PowerPoint/JPG)
+- **Figures 7, 10**: Spreadsheet analyses and comparisons (Excel/PowerPoint/JPG)
 
 ### Jupyter Notebook-Generated Figures
 
@@ -248,6 +246,22 @@ Chirp detection using cross-correlation template matching.
 #### [fig_05/fig_05.ipynb](fig_05/fig_05.ipynb)
 
 Multi-path propagation mode detection and analysis.
+
+#### [fig_08/fig_08.ipynb](fig_08/fig_08.ipynb)
+
+**Same path, different frequencies:**
+
+- Compares TDOA measurements at different frequencies on the same propagation path
+- WA5FRF→N6RFM path analysis
+- Demonstrates frequency-dependent ionospheric behavior
+
+#### [fig_09/fig_09.ipynb](fig_09/fig_09.ipynb)
+
+**Same frequency, different paths:**
+
+- Compares TDOA measurements at the same frequency on different propagation paths
+- Multiple path analysis showing spatial variations
+- Demonstrates path-dependent ionospheric characteristics
 
 #### [fig_11/fig_11.ipynb](fig_11/fig_11.ipynb)
 
@@ -267,12 +281,11 @@ Multi-path propagation mode detection and analysis.
 - WA5FRF→AB5YO path analysis
 - Demonstrates frequency-dependent propagation
 
-#### [fig_13_14/fig_13_14.ipynb](fig_13_14/fig_13_14.ipynb)
+#### [fig_13/fig_13.ipynb](fig_13/fig_13.ipynb)
 
 **Multi-mode TDOA analysis:**
 
-- Figure 13: WA5FRF→AB5YO path with multiple propagation modes
-- Figure 14: WA5FRF→N6RFM path analysis
+- WA5FRF→AB5YO path with multiple propagation modes
 - Processes 2F2-1F2, 1F2-1E, and 2F2-1E modes
 - Compares different ionospheric layer interactions
 
