@@ -7,9 +7,12 @@ The `test_figures.py` script automatically verifies that the Jupyter notebooks i
 ## What It Does
 
 1. **Executes each notebook**
+   - Runs `fig_08/fig_08.ipynb` → generates `fig_08/fig_08.jpg`
+   - Runs `fig_09/fig_09.ipynb` → generates `fig_09/fig_09.jpg`
    - Runs `fig_11/fig_11.ipynb` → generates `fig_11/fig_11.jpg`
    - Runs `fig_12/fig_12.ipynb` → generates `fig_12/fig_12.jpg`
-   - Runs `fig_13_14/fig_13_14.ipynb` → generates `fig_13_14/fig_13.jpg` and `fig_13_14/fig_14.jpg`
+   - Runs `fig_13/fig_13.ipynb` → generates `fig_13/fig_13.jpg`
+   - Runs `fig_15/fig_15.ipynb` → generates `fig_15/fig_15.jpg`
 
 2. **Compares generated figures**
    - Compares newly generated JPG files (in subdirectories) against baseline figures in `submitted_figures/`

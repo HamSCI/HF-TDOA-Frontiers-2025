@@ -48,9 +48,11 @@ class NotebookFigureTester:
         # Mapping of notebook subdirectories to their notebooks and expected output figures
         # Format: 'subdir': {'notebook': 'name.ipynb', 'figures': ['fig1.jpg', ...]}
         self.notebook_outputs = {
+            'fig_08': {'notebook': 'fig_08.ipynb', 'figures': ['fig_08.jpg']},
+            'fig_09': {'notebook': 'fig_09.ipynb', 'figures': ['fig_09.jpg']},
             'fig_11': {'notebook': 'fig_11.ipynb', 'figures': ['fig_11.jpg']},
             'fig_12': {'notebook': 'fig_12.ipynb', 'figures': ['fig_12.jpg']},
-            'fig_13_14': {'notebook': 'fig_13_14.ipynb', 'figures': ['fig_13.jpg', 'fig_14.jpg']},
+            'fig_13': {'notebook': 'fig_13.ipynb', 'figures': ['fig_13.jpg']},
             'fig_15': {'notebook': 'fig_15.ipynb', 'figures': ['fig_15.jpg']}
         }
 
