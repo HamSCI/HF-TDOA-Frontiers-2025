@@ -1,13 +1,13 @@
-# This is a manual analysis done by Steve Cerwin WA5FRF,
-"# Data in this CSV is taken from ""Austin 20240408 DThemens AB5YO TDOA (version 1).xlsx""",
-#,
-# TX: WA5FRF,
-# TX Grid Square: EL09nn,
-# RX: AB5YO,
-# RX Grid Square: EL09mn,
-# Frequency: 5 MHz,
-# Sweep Rate: 10 Hz/ms,
-#,
+# This is a manual analysis done by Steve Cerwin WA5FRF
+# Data in this CSV is taken from Austin 20240408 DThemens AB5YO TDOA (version 1).xlsx
+#
+# TX: WA5FRF
+# TX Grid Square: EL09nn
+# RX: AB5YO
+# RX Grid Square: EL09mn
+# Frequency: 5 MHz
+# Sweep Rate: 10 Hz/ms
+#
 utc,tdoa_hgt_km
 4/8/24 14:09,242
 4/8/24 14:15,228

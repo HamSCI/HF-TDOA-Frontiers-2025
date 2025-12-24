@@ -1,13 +1,13 @@
-# This is a manual analysis done by Samuel Blackshear AB5YO,
-"# Data in this CSV is taken from ""Austin 20240408 DThemens AB5YO TDOA (version 1).xlsx""",
-#,
-# TX: WA5FRF,
-# TX Grid Square: EL09nn,
-# RX: AB5YO,
-# RX Grid Square: EL09mn,
-# Frequency: 7 MHz,
-# Sweep Rate: 10 Hz/ms,
-#,
+# This is a manual analysis done by Samuel Blackshear AB5YO
+# Data in this CSV is taken from Austin 20240408 DThemens AB5YO TDOA (version 1).xlsx
+#
+# TX: WA5FRF
+# TX Grid Square: EL09nn
+# RX: AB5YO
+# RX Grid Square: EL09mn
+# Frequency: 7 MHz
+# Sweep Rate: 10 Hz/ms
+#
 utc,tdoa_hgt_km
 4/8/24 14:07,257
 4/8/24 14:13,252
