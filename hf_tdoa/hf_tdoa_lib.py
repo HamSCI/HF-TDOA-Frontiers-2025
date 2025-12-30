@@ -1086,6 +1086,7 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
     Build a TDOA configuration dictionary for use with plot_TDOAs and plot_hmf2.
 
     This function creates a dictionary with mode-specific parameters and TDOA model coefficients.
+    It also prints detailed path information and calculated model coefficients.
 
     Arguments:
     chirps : pd.DataFrame
@@ -1115,6 +1116,30 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
                 if mode_name in MODE_CONFIGS:
                     mode_strings.append(mode_name)
 
+    # Print detailed path information
+    print(f"\n{'='*60}")
+    print(f"Path Information")
+    print(f"{'='*60}")
+    print(f"  {path_info}")
+    print()
+
+    # Get TX and RX coordinates from gridsquares
+    tx_lat, tx_lon = path_info.get_tx_latlon()
+    rx_lat, rx_lon = path_info.get_rx_latlon()
+    print(f"TX Location: {tx_lat:.3f}°N, {tx_lon:.3f}°E ({path_info.tx_grid})")
+    print(f"RX Location: {rx_lat:.3f}°N, {rx_lon:.3f}°E ({path_info.rx_grid})")
+    print()
+
+    # Calculate the great circle midpoint between TX and RX
+    mid_lat, mid_lon = path_info.get_midpoint()
+    print(f"Path Midpoint: {mid_lat:.3f}°N, {mid_lon:.3f}°E")
+    print()
+
+    # Calculate the azimuth from TX to RX
+    azimuth = path_info.get_path_azimuth()
+    print(f"Path Azimuth (TX→RX): {azimuth:.1f}°")
+    print(f"{'='*60}\n")
+
     tdoa_dct = {}
     for mode_string in mode_strings:
         if mode_string not in MODE_CONFIGS:
@@ -1132,6 +1157,16 @@ def build_tdoa_config(chirps, mode_strings=None, **mode_overrides):
             config.update(mode_overrides[mode_string])
 
         tdoa_dct[mode_string] = config
+
+    # Print calculated TDOA model coefficients for verification
+    print("Calculated TDOA Model Coefficients:")
+    print("=" * 60)
+    for set_name, params in tdoa_dct.items():
+        slope, intercept = params['model_coeffs']
+        mode_str = params['mode_string']
+        print(f"{set_name:12s} ({mode_str:8s}): slope={slope:6.1f}, intercept={intercept:6.1f}")
+    print("=" * 60)
+    print()
 
     return tdoa_dct
 
