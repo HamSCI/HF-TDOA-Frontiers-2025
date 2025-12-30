@@ -1,15 +1,15 @@
-# This is a manual autocorrelation analysis done by J. Thomas McMahan K1FR.,,
-# tdoa_ms data in this CSV is taken from VERIFIED_2024-04-08_TX_WA5FRF_EL09nn-RX_AB5YO_EL09so-60m_TDOA.xlsm,,
-# tdoa_hgt_km computed using model below.,,
-# Model: tdoa_hgt_km = 150*tdoa_ms+0,,
-#,,
-# TX: WA5FRF,,
-# TX Grid Square: EL09nn,,
-# RX: AB5YO,,
-# RX Grid Square: EL09mn,,
-# Frequency: 5 MHz,,
-# Sweep Rate: 10 Hz/ms,,
-#,,
+# This is a manual autocorrelation analysis done by J. Thomas McMahan K1FR.
+# tdoa_ms data in this CSV is taken from VERIFIED_2024-04-08_TX_WA5FRF_EL09nn-RX_AB5YO_EL09so-60m_TDOA.xlsm
+# tdoa_hgt_km computed using model below.
+# Model: tdoa_hgt_km = 150*tdoa_ms+0
+#
+# TX: WA5FRF
+# TX Grid Square: EL09nn
+# RX: AB5YO
+# RX Grid Square: EL09mn
+# Frequency: 5 MHz
+# Sweep Rate: 10 Hz/ms
+#
 utc,tdoa_ms,tdoa_hgt_km
 14:09,1.5625,234.375
 14:15,1.635,245.25
