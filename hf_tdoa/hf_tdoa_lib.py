@@ -622,7 +622,7 @@ def load_tdoa_csv(csv_path):
     Loads TDOA data from a CSV file containing manual analysis results.
 
     Expected CSV format:
-    - utc: timestamp (e.g., '4/8/24 14:13')
+    - utc: timestamp in ISO 8601 format (e.g., '2024-04-08 14:13')
     - tdoa_ms: Manual analysis TDOA values in milliseconds (optional)
     - tdoa_hgt_km: Manual analysis layer heights already in kilometers (required)
 
@@ -641,8 +641,13 @@ def load_tdoa_csv(csv_path):
         - manualBeatNote_TDOA_ms: Original TDOA values in ms (if available)
         - manualBeatNote_height_km: Layer heights from manual analysis
     """
-    # Load CSV with datetime parsing, skipping comment lines starting with #
-    tdoa_df = pd.read_csv(csv_path, parse_dates=['utc'], comment='#')
+    # Load CSV with ISO 8601 datetime parsing, skipping comment lines starting with #
+    tdoa_df = pd.read_csv(
+        csv_path,
+        parse_dates=['utc'],
+        date_format='%Y-%m-%d %H:%M',
+        comment='#'
+    )
     tdoa_df = tdoa_df.set_index('utc')
 
     # Check that we have the required column
