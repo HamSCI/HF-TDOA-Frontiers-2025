@@ -1392,7 +1392,7 @@ def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True, legend
     for set_name, params in tdoa_dct.items():
         TDOAs = chirps[f'{set_name}_mean']
         line, = ax.plot(times, TDOAs,
-                label=set_name,
+                label=f'Automated Analysis: {set_name}',
                 marker=params.get('marker', 'o'),
                 linestyle=params.get('linestyle'),
                 linewidth=params.get('linewidth'),
@@ -1414,7 +1414,7 @@ def _plot_tdoa_on_axis(ax, chirps, tdoa_dct, ylim=(0, 3), show_date=True, legend
         ypos = lgnd['ypos']
         ypos = (ypos - ylim_actual[0]) / (ylim_actual[1] - ylim_actual[0])  # Convert to fraction of axis height
         ypos = ypos + legend_offset  # Nudge legend down
-        legend = ax.legend(handles=[line], loc=(xpos, ypos))
+        legend = ax.legend(handles=[line], loc=(xpos, ypos), fontsize='small')
         ax.add_artist(legend)
 
     _format_datetime_axis(ax)
