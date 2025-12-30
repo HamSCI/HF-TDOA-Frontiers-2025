@@ -664,6 +664,115 @@ def load_tdoa_csv(csv_path):
     return tdoa_df
 
 
+def save_tdoa_csv(chirps, mode_string, tdoa_config, output_dir, date_str=None):
+    """
+    Saves TDOA measurements and derived layer heights to a CSV file.
+
+    This function creates CSV files with automated TDOA analysis results that can be
+    used to recreate figures. The CSV includes header comments with metadata and
+    model coefficients.
+
+    Arguments:
+    chirps : pd.DataFrame
+        DataFrame containing chirp data and TDOA measurements from find_TDOAs().
+        Must have 'path_info' in attrs.
+    mode_string : str
+        Propagation mode identifier (e.g., '2F2-1F2', '1F2-1E', '2F2-1E').
+    tdoa_config : dict
+        Configuration dictionary for this mode from build_tdoa_config().
+        Must contain 'model_coeffs' key with (slope, intercept) tuple.
+    output_dir : str
+        Directory path where CSV file will be saved. Created if it doesn't exist.
+    date_str : str, optional
+        Date string in YYYYmmdd format for filename. If None, extracted from first chirp timestamp.
+
+    Returns:
+    csv_path : str
+        Path to the saved CSV file.
+
+    Example:
+    >>> chirps = tdoa.find_chirps(wavlist, template, sweep_rate=10)
+    >>> chirps = tdoa.find_TDOAs(chirps, mode_string='2F2-1F2')
+    >>> tdoa_dct = tdoa.build_tdoa_config(chirps)
+    >>> tdoa.save_tdoa_csv(chirps, '2F2-1F2', tdoa_dct['2F2-1F2'], 'output/tdoa_calculations')
+    """
+    # Get path info from chirps
+    path_info = chirps.attrs.get('path_info')
+    if path_info is None:
+        raise ValueError("chirps must have 'path_info' in attrs")
+
+    # Extract date from first chirp if not provided
+    if date_str is None:
+        first_utc = chirps['utc'].iloc[0]
+        date_str = first_utc.strftime('%Y%m%d')
+
+    # Get model coefficients
+    slope, intercept = tdoa_config['model_coeffs']
+
+    # Get mean TDOA values
+    mean_tdoas = chirps[f'{mode_string}_mean']
+
+    # Calculate layer heights from TDOAs using the model
+    mean_heights = (slope * mean_tdoas) + intercept
+
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Build filename: {YYYYmmdd}_{mode_string}_{path_string}.csv
+    # Path string includes TX-RX-band information
+    path_string = f"TX_{path_info.tx_call}_{path_info.tx_grid}-RX_{path_info.rx_call}_{path_info.rx_grid}-{path_info.band}m"
+    filename = f"{date_str}_{mode_string}_{path_string}.csv"
+    csv_path = os.path.join(output_dir, filename)
+
+    # Build header block with metadata
+    header_lines = []
+    header_lines.append("# Automated TDOA Analysis Results")
+    header_lines.append("#")
+    header_lines.append(f"# Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    header_lines.append("#")
+    header_lines.append("# Propagation Path Information:")
+    header_lines.append(f"# TX: {path_info.tx_call}")
+    header_lines.append(f"# TX Grid Square: {path_info.tx_grid}")
+    header_lines.append(f"# RX: {path_info.rx_call}")
+    header_lines.append(f"# RX Grid Square: {path_info.rx_grid}")
+    header_lines.append(f"# Frequency: {path_info.band_str}")
+    header_lines.append(f"# Ground Range: {path_info.get_range_km():.1f} km")
+    header_lines.append("#")
+    header_lines.append(f"# Propagation Mode: {mode_string}")
+    header_lines.append("#")
+    header_lines.append("# TDOA Model Coefficients:")
+    header_lines.append(f"# Model: mean_tdoa_hgt_km = {slope:.1f}*mean_tdoa_ms + {intercept:.1f}")
+    header_lines.append("#")
+    header_lines.append("# Columns:")
+    header_lines.append("# utc - UTC timestamp (YYYY-mm-dd HH:MM)")
+    header_lines.append("# mean_tdoa_ms - Mean TDOA in milliseconds")
+    header_lines.append("# mean_tdoa_hgt_km - Mean layer height in kilometers (calculated from TDOA)")
+    header_lines.append("#")
+
+    # Create DataFrame with results
+    output_df = pd.DataFrame({
+        'utc': chirps['utc'],
+        'mean_tdoa_ms': mean_tdoas,
+        'mean_tdoa_hgt_km': mean_heights
+    })
+
+    # Format UTC column for output
+    output_df['utc'] = output_df['utc'].dt.strftime('%Y-%m-%d %H:%M')
+
+    # Write to CSV with header
+    with open(csv_path, 'w') as f:
+        # Write header lines
+        for line in header_lines:
+            f.write(line + '\n')
+
+        # Write data (pandas will write column names)
+        output_df.to_csv(f, index=False, float_format='%.2f')
+
+    print(f"Saved TDOA CSV: {csv_path}")
+
+    return csv_path
+
+
 # ============================================================================
 # Signal Processing Functions
 # ============================================================================

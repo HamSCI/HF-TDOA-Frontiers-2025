@@ -49,6 +49,7 @@ from .hf_tdoa_lib import (
     # Data loading and overlay functions
     load_ionosonde_data,
     load_tdoa_csv,
+    save_tdoa_csv,
     overlay_ionosonde,
     overlay_austin_ionosonde,
     overlay_tdoa_csv,
@@ -85,6 +86,7 @@ __all__ = [
     'build_tdoa_config',
     'load_ionosonde_data',
     'load_tdoa_csv',
+    'save_tdoa_csv',
     'overlay_ionosonde',
     'overlay_austin_ionosonde',
     'overlay_tdoa_csv',
