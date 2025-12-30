@@ -1049,10 +1049,10 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
             should_plot = save_fft_dir is not None and (not plot_only_one or chirp_idx == 0)
             if should_plot:
                 # Generate unique filename identifier (without .png extension)
-                # Format: {mode_string}_chirp{###}_{wav_filename}
+                # Format: {mode_string}_{wav_filename}_chirp{###}
                 # Each chirp is uniquely identified by its WAV file and chirp index
                 fname_noext = os.path.splitext(bname)[0]
-                plot_filename = f"{mode_string}_chirp{chirp_idx:03d}_{fname_noext}"
+                plot_filename = f"{mode_string}_{fname_noext}_chirp{chirp_idx:03d}"
                 savefig_path = os.path.join(save_fft_dir, f"{plot_filename}.png")
 
                 plot_chirp_fft(title=bname, tlim=tlim,
