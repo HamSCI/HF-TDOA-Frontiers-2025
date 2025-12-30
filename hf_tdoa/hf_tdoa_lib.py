@@ -2506,6 +2506,13 @@ def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='1min', method=
     tdoa_renamed = tdoa_df.copy()
     tdoa_renamed.columns = ['tdoa_height']
 
+    # Drop any rows with NaN values in TDOA data (both NaN index and NaN values)
+    # This is necessary because merge_asof requires non-null merge keys
+    tdoa_renamed = tdoa_renamed.dropna()
+
+    # Also drop rows where the index itself is NaT (Not a Time)
+    tdoa_renamed = tdoa_renamed[tdoa_renamed.index.notna()]
+
     # Use merge_asof for time-tolerance matching
     # This matches each TDOA measurement to the nearest ionosonde value
     # Result will have exactly as many rows as TDOA measurements
@@ -2876,5 +2883,278 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
             print(f"Saved: {filepath}")
         else:
             plt.show()
+
+    return results
+
+
+def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, output_dir=None):
+    """
+    Create a 2x2 figure comparing manual and automated TDOA analysis methods.
+
+    Layout:
+    - Row 1 (a-b): Manual analysis with scatter plot and statistics table
+    - Row 2 (c-d): Automated analysis with scatter plot and statistics table
+
+    Parameters
+    ----------
+    manual_datasets : list of dict
+        List of manual TDOA datasets, each with 'df', 'label', 'color', and 'marker'
+    automated_datasets : list of dict
+        List of automated TDOA datasets, each with 'df', 'label', 'color', and 'marker'
+    ionosonde_df : pandas.DataFrame
+        Ionosonde data with hmF2 column and datetime index
+    output_dir : str, optional
+        Directory to save the output figure
+
+    Returns
+    -------
+    dict
+        Dictionary with 'manual' and 'automated' keys, each containing results for datasets
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.gridspec import GridSpec
+
+    results = {'manual': {}, 'automated': {}}
+
+    # Create figure with 2x2 grid
+    fig = plt.figure(figsize=(24, 16))
+    gs = GridSpec(2, 2, figure=fig, width_ratios=[1, 1.2], height_ratios=[1, 1],
+                  hspace=0.3, wspace=0.3)
+
+    # ========================================================================
+    # Top Row: Manual Analysis
+    # ========================================================================
+
+    # Panel (a): Manual scatter plot
+    ax_manual_scatter = fig.add_subplot(gs[0, 0])
+
+    for idx, dataset in enumerate(manual_datasets):
+        # Align and resample data
+        aligned_df, resampled_df = align_and_resample_data(
+            dataset['df'], ionosonde_df
+        )
+
+        # Create scatter plot
+        ax_manual_scatter, stats = plot_scatter_comparison(
+            aligned_df['tdoa_height'],
+            aligned_df['hmF2'],
+            label=dataset['label'],
+            color=dataset['color'],
+            marker=dataset.get('marker', 'o'),
+            ax=ax_manual_scatter,
+            show_1to1=False
+        )
+
+        results['manual'][dataset['label']] = stats
+
+    # Style manual scatter plot
+    ax_manual_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
+    ax_manual_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
+    ax_manual_scatter.set_title('(a) Manual Analysis: HF TDOA vs Ionosonde hmF2',
+                                fontweight='bold', fontsize=16, loc='left')
+    ax_manual_scatter.legend(loc='upper right', fontsize='small')
+    ax_manual_scatter.grid(True, alpha=0.3)
+    ax_manual_scatter.set_xlim(200, 400)
+    ax_manual_scatter.set_ylim(200, 400)
+    ax_manual_scatter.set_aspect('equal')
+
+    # Panel (b): Manual statistics table
+    ax_manual_table = fig.add_subplot(gs[0, 1])
+    ax_manual_table.axis('off')
+    ax_manual_table.set_title('(b) Manual Analysis: Correlation Statistics',
+                              fontweight='bold', fontsize=16, loc='left', pad=20)
+
+    # Prepare manual table data
+    manual_table_data = []
+    for dataset in manual_datasets:
+        label = dataset['label']
+        if label in results['manual'] and results['manual'][label]:
+            stats = results['manual'][label]
+            manual_table_data.append([
+                '',  # Placeholder for symbol
+                label,
+                f"{stats['n_points']}",
+                f"{stats['correlation']:.3f}",
+                f"{stats['rmse_percent']:.1f}%",
+                f"{stats['bias_percent']:.1f}%"
+            ])
+
+    # Create manual table
+    manual_table = ax_manual_table.table(
+        cellText=manual_table_data,
+        colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
+        cellLoc='left',
+        loc='upper center',
+        bbox=[0, 0, 1, 0.9]
+    )
+
+    # Style manual table
+    manual_table.auto_set_font_size(False)
+    manual_table.set_fontsize(11)
+    manual_table.scale(1, 2.5)
+
+    # Set column widths
+    col_widths = [0.08, 0.35, 0.10, 0.12, 0.15, 0.15]
+    for row in range(len(manual_datasets) + 1):
+        for col in range(6):
+            cell = manual_table[(row, col)]
+            cell.set_width(col_widths[col])
+
+    # Color header
+    for i in range(6):
+        cell = manual_table[(0, i)]
+        cell.set_facecolor('#4472C4')
+        cell.set_text_props(weight='bold', color='white')
+
+    # Alternate row colors
+    for idx, dataset in enumerate(manual_datasets):
+        row_idx = idx + 1
+        for j in range(6):
+            cell = manual_table[(row_idx, j)]
+            if row_idx % 2 == 0:
+                cell.set_facecolor('#E7E6E6')
+            else:
+                cell.set_facecolor('white')
+
+    # Add symbols to manual table
+    num_rows_manual = len(manual_datasets) + 1
+    row_height_manual = 0.9 / num_rows_manual
+    for idx, dataset in enumerate(manual_datasets):
+        row_idx = idx + 1
+        y_pos = 0.9 - (row_idx + 0.5) * row_height_manual
+        x_pos = 0.04
+        ax_manual_table.plot(
+            x_pos, y_pos,
+            marker=dataset.get('marker', 'o'),
+            color=dataset['color'],
+            markersize=12,
+            markeredgecolor='black',
+            markeredgewidth=0.5,
+            linestyle='',
+            transform=ax_manual_table.transAxes,
+            clip_on=False
+        )
+
+    # ========================================================================
+    # Bottom Row: Automated Analysis
+    # ========================================================================
+
+    # Panel (c): Automated scatter plot
+    ax_auto_scatter = fig.add_subplot(gs[1, 0])
+
+    for idx, dataset in enumerate(automated_datasets):
+        # Align and resample data
+        aligned_df, resampled_df = align_and_resample_data(
+            dataset['df'], ionosonde_df
+        )
+
+        # Create scatter plot
+        ax_auto_scatter, stats = plot_scatter_comparison(
+            aligned_df['tdoa_height'],
+            aligned_df['hmF2'],
+            label=dataset['label'],
+            color=dataset['color'],
+            marker=dataset.get('marker', 'o'),
+            ax=ax_auto_scatter,
+            show_1to1=False
+        )
+
+        results['automated'][dataset['label']] = stats
+
+    # Style automated scatter plot
+    ax_auto_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
+    ax_auto_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
+    ax_auto_scatter.set_title('(c) Automated Analysis: HF TDOA vs Ionosonde hmF2',
+                              fontweight='bold', fontsize=16, loc='left')
+    ax_auto_scatter.legend(loc='upper right', fontsize='small')
+    ax_auto_scatter.grid(True, alpha=0.3)
+    ax_auto_scatter.set_xlim(200, 400)
+    ax_auto_scatter.set_ylim(200, 400)
+    ax_auto_scatter.set_aspect('equal')
+
+    # Panel (d): Automated statistics table
+    ax_auto_table = fig.add_subplot(gs[1, 1])
+    ax_auto_table.axis('off')
+    ax_auto_table.set_title('(d) Automated Analysis: Correlation Statistics',
+                            fontweight='bold', fontsize=16, loc='left', pad=20)
+
+    # Prepare automated table data
+    auto_table_data = []
+    for dataset in automated_datasets:
+        label = dataset['label']
+        if label in results['automated'] and results['automated'][label]:
+            stats = results['automated'][label]
+            auto_table_data.append([
+                '',  # Placeholder for symbol
+                label,
+                f"{stats['n_points']}",
+                f"{stats['correlation']:.3f}",
+                f"{stats['rmse_percent']:.1f}%",
+                f"{stats['bias_percent']:.1f}%"
+            ])
+
+    # Create automated table
+    auto_table = ax_auto_table.table(
+        cellText=auto_table_data,
+        colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
+        cellLoc='left',
+        loc='upper center',
+        bbox=[0, 0, 1, 0.9]
+    )
+
+    # Style automated table
+    auto_table.auto_set_font_size(False)
+    auto_table.set_fontsize(11)
+    auto_table.scale(1, 2.5)
+
+    # Set column widths
+    for row in range(len(automated_datasets) + 1):
+        for col in range(6):
+            cell = auto_table[(row, col)]
+            cell.set_width(col_widths[col])
+
+    # Color header
+    for i in range(6):
+        cell = auto_table[(0, i)]
+        cell.set_facecolor('#4472C4')
+        cell.set_text_props(weight='bold', color='white')
+
+    # Alternate row colors
+    for idx, dataset in enumerate(automated_datasets):
+        row_idx = idx + 1
+        for j in range(6):
+            cell = auto_table[(row_idx, j)]
+            if row_idx % 2 == 0:
+                cell.set_facecolor('#E7E6E6')
+            else:
+                cell.set_facecolor('white')
+
+    # Add symbols to automated table
+    num_rows_auto = len(automated_datasets) + 1
+    row_height_auto = 0.9 / num_rows_auto
+    for idx, dataset in enumerate(automated_datasets):
+        row_idx = idx + 1
+        y_pos = 0.9 - (row_idx + 0.5) * row_height_auto
+        x_pos = 0.04
+        ax_auto_table.plot(
+            x_pos, y_pos,
+            marker=dataset.get('marker', 'o'),
+            color=dataset['color'],
+            markersize=12,
+            markeredgecolor='black',
+            markeredgewidth=0.5,
+            linestyle='',
+            transform=ax_auto_table.transAxes,
+            clip_on=False
+        )
+
+    # Save or show
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+        filepath = os.path.join(output_dir, 'scatter_manual_vs_automated.jpg')
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved: {filepath}")
+    else:
+        plt.show()
 
     return results
