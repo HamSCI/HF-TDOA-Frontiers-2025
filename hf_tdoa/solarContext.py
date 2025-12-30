@@ -308,17 +308,20 @@ class solarTimeseries(object):
 
     def overlaySolarElevation(self,ax,ylim=(0,90),
             ylabel='Solar Elevation Angle',
-            grid=False,color='0.6',ls='-.',lw=4,**kwargs):
+            grid=False,color='0.6',ls='-.',lw=4,label='Solar Elevation',**kwargs):
         """
         Overplot the solar elevation on a timeseries axis object. The new data
         will be plotted on a twin axis created by ax.twinx()
 
         ax: Axis object of original timeseries. X-axis should use UTC datetimes.
+
+        Returns:
+        line: The line object created by the plot, which can be added to a legend.
         """
         if not self.__check_parameters__():
             print('WARNING: Incomplete inputs to solarTimeseries().')
             print('         Cannot overlay solar elevations angles.')
-            return
+            return None
 
         if 'solarAzEls' not in self.data:
             self.__calcSolarAzEls__()
@@ -328,15 +331,17 @@ class solarTimeseries(object):
         sza_yy  = azEls['el']
 
         ax_sza = ax.twinx()
-        ax_sza.plot(sza_xx,sza_yy,color=color,ls=ls,lw=lw,**kwargs)
+        line, = ax_sza.plot(sza_xx,sza_yy,color=color,ls=ls,lw=lw,label=label,**kwargs)
         ax_sza.set_ylabel(ylabel)
         ax_sza.set_ylim(ylim)
         ax_sza.grid(grid)
 
+        return line
+
     def overlayEclipse(self,ax,ylim=(1.,0.),
             ylabel='Eclipse Obscuration',
             color='b',alpha=0.5,ls=':',lw=4,grid=False,
-            spine_position=1.06,**kwargs):
+            spine_position=1.06,label='Eclipse Obscuration',**kwargs):
         """
         Overplot the eclipse obscuration on a timeseries axis object. The new data
         will be plotted on a twin axis created by ax.twinx()
@@ -344,11 +349,14 @@ class solarTimeseries(object):
         ax: Axis object of original timeseries. X-axis should use UTC datetimes.
         spine_position: Position of spine in transAxes coordinates so. Default set to
             1.10 so that this spine does not overlap with Solar Elevation Angle.
+
+        Returns:
+        line: The line object created by the plot, which can be added to a legend.
         """
         if not self.__check_parameters__():
             print('WARNING: Incomplete inputs to solarTimeseries().')
             print('         Cannot overlay solar eclipse obscurations.')
-            return
+            return None
 
         if 'solarEclipse' not in self.data:
             self.__calcSolarEclipse__()
@@ -357,9 +365,11 @@ class solarTimeseries(object):
         obsc        = self.data['solarEclipse']['obsc']
 
         ax_ecl = ax.twinx()
-        ax_ecl.plot(solar_times,obsc,color=color,alpha=alpha,ls=ls,lw=lw,**kwargs)
+        line, = ax_ecl.plot(solar_times,obsc,color=color,alpha=alpha,ls=ls,lw=lw,label=label,**kwargs)
         ax_ecl.set_ylabel(ylabel)
         ax_ecl.set_ylim(ylim)
         ax_ecl.grid(grid)
         if spine_position is not None:
             ax_ecl.spines.right.set_position(("axes", spine_position))
+
+        return line

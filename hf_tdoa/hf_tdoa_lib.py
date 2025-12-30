@@ -1551,6 +1551,10 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
     ax.set_xlabel('Time UTC')
 
     # Add solar elevation and/or eclipse obscuration overlays if requested
+    # Collect line objects to add to the legend
+    solar_lines = []
+    solar_labels = []
+
     if overlay_solar_elevation or overlay_eclipse:
         if solar_lat is None or solar_lon is None:
             print('WARNING: solar_lat and solar_lon must be provided for solar overlays.')
@@ -1575,15 +1579,30 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
                 )
 
                 if overlay_solar_elevation:
-                    solar_ts.overlaySolarElevation(ax)
+                    line = solar_ts.overlaySolarElevation(ax)
+                    if line is not None:
+                        solar_lines.append(line)
+                        solar_labels.append(line.get_label())
 
                 if overlay_eclipse:
-                    solar_ts.overlayEclipse(ax)
+                    line = solar_ts.overlayEclipse(ax)
+                    if line is not None:
+                        solar_lines.append(line)
+                        solar_labels.append(line.get_label())
 
             except (ImportError, AttributeError) as e:
                 print(f'WARNING: Cannot overlay solar data. Error: {e}')
 
-    ax.legend(loc=legend_loc, fontsize=legend_fontsize)
+    # Create legend with all elements including solar overlays
+    if solar_lines:
+        # Get existing legend handles and labels from the main axis
+        handles, labels = ax.get_legend_handles_labels()
+        # Add solar overlay lines to the legend
+        handles.extend(solar_lines)
+        labels.extend(solar_labels)
+        ax.legend(handles=handles, labels=labels, loc=legend_loc, fontsize=legend_fontsize)
+    else:
+        ax.legend(loc=legend_loc, fontsize=legend_fontsize)
 
     # Use path_info from attrs
     path_info = chirps.attrs['path_info']
