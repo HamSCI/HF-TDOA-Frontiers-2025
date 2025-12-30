@@ -617,63 +617,44 @@ def load_ionosonde_data(csv_path=None):
     return ionosonde_df
 
 
-def load_tdoa_csv(csv_path, model_coeffs):
+def load_tdoa_csv(csv_path):
     """
-    Loads TDOA data from a CSV file and applies the HF TDOA model to convert to layer heights.
+    Loads TDOA data from a CSV file containing manual analysis results.
 
-    The CSV file can be in one of two formats:
-
-    Format 1 (Legacy TDOA format):
-    - utc: timestamp in ISO format (e.g., '2024-04-08 14:13:00')
-    - manualBeatNote_TDOA_ms: Manual Period Analysis TDOA values in milliseconds
-    - autoCorrelation_TDOA_ms: Auto-Correlated Analysis TDOA values in milliseconds
-
-    Format 2 (New manual analysis format):
+    Expected CSV format:
     - utc: timestamp (e.g., '4/8/24 14:13')
     - tdoa_ms: Manual analysis TDOA values in milliseconds (optional)
-    - tdoa_hgt_km: Manual analysis layer heights already in kilometers
-    - autoCorrelation_TDOA_ms: Auto-Correlated Analysis TDOA values (optional, for backward compatibility)
+    - tdoa_hgt_km: Manual analysis layer heights already in kilometers (required)
+
+    The CSV file should have pre-calculated layer heights in the tdoa_hgt_km column.
+    This function is used for loading verified manual beatnote analysis and manual
+    autocorrelation analysis CSV files.
 
     Arguments:
     csv_path : str
         Path to the CSV file containing TDOA data.
-    model_coeffs : tuple
-        Tuple of (slope, intercept) for the TDOA model.
-        Layer height = slope * TDOA_ms + intercept
-        Only used for Format 1 or for auto-correlation data.
 
     Returns:
     tdoa_df : pd.DataFrame
         DataFrame containing:
         - UTC datetime index
         - manualBeatNote_TDOA_ms: Original TDOA values in ms (if available)
-        - autoCorrelation_TDOA_ms: Original TDOA values in ms (if available)
         - manualBeatNote_height_km: Layer heights from manual analysis
-        - autoCorrelation_height_km: Layer heights from auto-correlation (if available)
     """
     # Load CSV with datetime parsing, skipping comment lines starting with #
     tdoa_df = pd.read_csv(csv_path, parse_dates=['utc'], comment='#')
     tdoa_df = tdoa_df.set_index('utc')
 
-    slope, intercept = model_coeffs
+    # Check that we have the required column
+    if 'tdoa_hgt_km' not in tdoa_df.columns:
+        raise ValueError(f"CSV file {csv_path} must contain 'tdoa_hgt_km' column with pre-calculated layer heights")
 
-    # Check which format we have by examining the columns
-    if 'tdoa_hgt_km' in tdoa_df.columns:
-        # Format 2: New manual analysis format with heights already in km
-        # The manual heights are already calculated, so just rename to standard column name
-        tdoa_df['manualBeatNote_height_km'] = tdoa_df['tdoa_hgt_km']
+    # Use the pre-calculated heights
+    tdoa_df['manualBeatNote_height_km'] = tdoa_df['tdoa_hgt_km']
 
-        # Keep the TDOA values if they exist
-        if 'tdoa_ms' in tdoa_df.columns:
-            tdoa_df['manualBeatNote_TDOA_ms'] = tdoa_df['tdoa_ms']
-
-        # Handle auto-correlation if present (convert from TDOA to height)
-        if 'autoCorrelation_TDOA_ms' in tdoa_df.columns:
-            tdoa_df['autoCorrelation_height_km'] = slope * tdoa_df['autoCorrelation_TDOA_ms'] + intercept
-    else:
-        # Format 1: Legacy format - convert TDOA to heights using model
-        tdoa_df['manualBeatNote_height_km'] = slope * tdoa_df['manualBeatNote_TDOA_ms'] + intercept
-        tdoa_df['autoCorrelation_height_km'] = slope * tdoa_df['autoCorrelation_TDOA_ms'] + intercept
+    # Keep the TDOA values if they exist
+    if 'tdoa_ms' in tdoa_df.columns:
+        tdoa_df['manualBeatNote_TDOA_ms'] = tdoa_df['tdoa_ms']
 
     return tdoa_df
 
@@ -1516,6 +1497,8 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
         Dictionary containing parameters to pass to overlay_ionosonde().
     tdoa_csv_dct : dict, optional
         Dictionary containing parameters to pass to overlay_tdoa_csv().
+        Supported keys: csv_path_beatnote, csv_path_autocorr, label_beatnote, label_autocorr,
+        color_beatnote, linestyle_beatnote, color_autocorr, linestyle_autocorr.
     show_date : bool, optional
         If True, show date in the title. Default is True.
     legend_loc : str, optional
@@ -1645,17 +1628,16 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
         Dictionary containing parameters to pass to overlay_tdoa_csv().
         If True, uses default parameters. If None, no TDOA CSV data is overlaid.
         Available parameters:
-            - csv_path: Path to TDOA CSV file (REQUIRED)
-            - model_coeffs: Tuple of (slope, intercept) for TDOA model (REQUIRED)
-            - overlay_manual: If True, overlay manual period analysis (default: True)
-            - overlay_autocorr: If True, overlay auto-correlated analysis (default: True)
-            - manual_label: Label for manual analysis (default: 'Manual Period Analysis')
-            - autocorr_label: Label for auto-correlation (default: 'Auto-Correlated Analysis')
-            - manual_color: Color for manual line (default: 'tab:blue')
-            - manual_linestyle: Linestyle for manual (default: 'dotted')
-            - autocorr_color: Color for autocorr line (default: 'tab:orange')
-            - autocorr_linestyle: Linestyle for autocorr (default: 'dashdot')
-        Example: {'csv_path': 'data/CSVs/file.csv', 'model_coeffs': (142, 36.1)}
+            - csv_path_beatnote: Path to manual beatnote analysis CSV file (optional)
+            - csv_path_autocorr: Path to manual autocorrelation analysis CSV file (optional)
+            - label_beatnote: Label for beatnote analysis (default: 'Manual Beatnote Analysis')
+            - label_autocorr: Label for autocorrelation (default: 'Manual Autocorrelation Analysis')
+            - color_beatnote: Color for beatnote line (default: 'tab:blue')
+            - linestyle_beatnote: Linestyle for beatnote (default: 'dotted')
+            - color_autocorr: Color for autocorr line (default: 'tab:orange')
+            - linestyle_autocorr: Linestyle for autocorr (default: 'dashdot')
+        Example: {'csv_path_beatnote': 'data/CSVs/beatnote.csv',
+                  'csv_path_autocorr': 'data/CSVs/autocorr.csv'}
         Default is None.
     savefig : str, optional
         If provided, saves the figure to this file path. High-resolution JPEG recommended.
@@ -1852,6 +1834,7 @@ def plot_tdoa_hmf2_subplot(chirps, tdoa_dct, subplot_labels=None,
         Dictionary containing parameters to pass to overlay_ionosonde() for hmf2 plot.
     tdoa_csv_dct : dict, optional
         Dictionary containing parameters to pass to overlay_tdoa_csv() for hmf2 plot.
+        See plot_hmf2() documentation for available parameters.
     image_panel : str, optional
         Path to an image file to include as an additional panel (e.g., 'etalon.png').
         If provided, creates a third panel below the layer heights plot.
@@ -2009,75 +1992,54 @@ def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_AU930_AustinTX_I
                      hmF2_color='purple', hmE_color='brown')
 
 
-def overlay_tdoa_csv(ax, csv_path, model_coeffs,
-                     overlay_manual=True, overlay_autocorr=True,
-                     manual_label='Manual Period Analysis',
-                     autocorr_label='Auto-Correlated Analysis',
-                     manual_color='tab:blue', manual_linestyle='dotted',
-                     autocorr_color='tab:orange', autocorr_linestyle='dashdot',
-                     autocorr_csv_path=None):
+def overlay_tdoa_csv(ax, csv_path_beatnote=None, csv_path_autocorr=None,
+                     label_beatnote='Manual Beatnote Analysis',
+                     label_autocorr='Manual Autocorrelation Analysis',
+                     color_beatnote='tab:blue', linestyle_beatnote='dotted',
+                     color_autocorr='tab:orange', linestyle_autocorr='dashdot'):
     """
-    Overlays TDOA data from CSV files on an existing axes.
+    Overlays manual TDOA analysis data from CSV files on an existing axes.
 
-    This function loads TDOA measurements from CSV files and applies the HF TDOA model
-    to convert them to layer heights before plotting.
+    This function loads verified manual TDOA measurements from CSV files
+    (either manual beatnote analysis or manual autocorrelation analysis)
+    and plots the pre-calculated layer heights.
 
     Arguments:
     ax : matplotlib.axes.Axes
         The axes object to plot on.
-    csv_path : str
-        Path to the CSV file containing TDOA data (can contain both manual and autocorr data,
-        or just manual data if autocorr_csv_path is specified).
-    model_coeffs : tuple
-        Tuple of (slope, intercept) for the TDOA model.
-        Used for auto-correlation data or legacy format files.
-    overlay_manual : bool, optional
-        If True, overlay manual period analysis data. Default is True.
-    overlay_autocorr : bool, optional
-        If True, overlay auto-correlated analysis data. Default is True.
-    manual_label : str, optional
-        Label for manual analysis data. Default is 'Manual Period Analysis'.
-    autocorr_label : str, optional
-        Label for auto-correlation data. Default is 'Auto-Correlated Analysis'.
-    manual_color : str, optional
-        Color for manual analysis line. Default is 'tab:blue'.
-    manual_linestyle : str, optional
-        Linestyle for manual analysis. Default is 'dotted'.
-    autocorr_color : str, optional
-        Color for auto-correlation line. Default is 'tab:orange'.
-    autocorr_linestyle : str, optional
-        Linestyle for auto-correlation. Default is 'dashdot'.
-    autocorr_csv_path : str, optional
-        Path to a separate CSV file containing auto-correlation data. If None, looks for
-        auto-correlation data in csv_path. Use this when manual and autocorr data are
-        in separate files. Default is None.
+    csv_path_beatnote : str, optional
+        Path to the manual beatnote analysis CSV file. If None, beatnote data is not plotted.
+    csv_path_autocorr : str, optional
+        Path to the manual autocorrelation analysis CSV file. If None, autocorr data is not plotted.
+    label_beatnote : str, optional
+        Label for beatnote analysis data. Default is 'Manual Beatnote Analysis'.
+    label_autocorr : str, optional
+        Label for autocorrelation analysis data. Default is 'Manual Autocorrelation Analysis'.
+    color_beatnote : str, optional
+        Color for beatnote analysis line. Default is 'tab:blue'.
+    linestyle_beatnote : str, optional
+        Linestyle for beatnote analysis. Default is 'dotted'.
+    color_autocorr : str, optional
+        Color for autocorrelation analysis line. Default is 'tab:orange'.
+    linestyle_autocorr : str, optional
+        Linestyle for autocorrelation analysis. Default is 'dashdot'.
     """
-    # Load the main CSV file (contains manual data, may also contain autocorr data)
-    tdoa_df = load_tdoa_csv(csv_path, model_coeffs)
+    # Plot manual beatnote analysis if CSV path provided
+    if csv_path_beatnote is not None:
+        beatnote_df = load_tdoa_csv(csv_path_beatnote)
+        if 'manualBeatNote_height_km' in beatnote_df.columns:
+            ax.plot(beatnote_df.index, beatnote_df['manualBeatNote_height_km'],
+                    color=color_beatnote, linestyle=linestyle_beatnote,
+                    label=label_beatnote, linewidth=2)
+            ax.scatter(beatnote_df.index, beatnote_df['manualBeatNote_height_km'],
+                       color=color_beatnote)
 
-    # Plot manual analysis if requested and available
-    if overlay_manual and 'manualBeatNote_height_km' in tdoa_df.columns:
-        ax.plot(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
-                color=manual_color, linestyle=manual_linestyle,
-                label=manual_label, linewidth=2)
-        ax.scatter(tdoa_df.index, tdoa_df['manualBeatNote_height_km'],
-                   color=manual_color)
-
-    # Handle auto-correlation data
-    if overlay_autocorr:
-        # If a separate autocorr CSV is specified, load it
-        if autocorr_csv_path is not None:
-            autocorr_df = load_tdoa_csv(autocorr_csv_path, model_coeffs)
-            if 'autoCorrelation_height_km' in autocorr_df.columns:
-                ax.plot(autocorr_df.index, autocorr_df['autoCorrelation_height_km'],
-                        color=autocorr_color, linestyle=autocorr_linestyle,
-                        label=autocorr_label, linewidth=2)
-                ax.scatter(autocorr_df.index, autocorr_df['autoCorrelation_height_km'],
-                           color=autocorr_color)
-        # Otherwise, look for autocorr data in the main CSV
-        elif 'autoCorrelation_height_km' in tdoa_df.columns:
-            ax.plot(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
-                    color=autocorr_color, linestyle=autocorr_linestyle,
-                    label=autocorr_label, linewidth=2)
-            ax.scatter(tdoa_df.index, tdoa_df['autoCorrelation_height_km'],
-                       color=autocorr_color)
+    # Plot manual autocorrelation analysis if CSV path provided
+    if csv_path_autocorr is not None:
+        autocorr_df = load_tdoa_csv(csv_path_autocorr)
+        if 'manualBeatNote_height_km' in autocorr_df.columns:
+            ax.plot(autocorr_df.index, autocorr_df['manualBeatNote_height_km'],
+                    color=color_autocorr, linestyle=linestyle_autocorr,
+                    label=label_autocorr, linewidth=2)
+            ax.scatter(autocorr_df.index, autocorr_df['manualBeatNote_height_km'],
+                       color=color_autocorr)

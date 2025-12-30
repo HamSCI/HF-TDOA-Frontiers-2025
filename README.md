@@ -343,9 +343,7 @@ tdoa.plot_hmf2(chirps, tdoa_dct)
 path_info = chirps.attrs['path_info']
 solar_lat, solar_lon = path_info.get_midpoint()
 
-# Plot with solar elevation and eclipse obscuration
-model_coeffs = tdoa_dct['2F2-1F2']['model_coeffs']
-
+# Plot with solar elevation, eclipse obscuration, and manual analysis overlays
 tdoa.plot_hmf2(
     chirps, tdoa_dct,
     solar_lat=solar_lat,
@@ -354,8 +352,8 @@ tdoa.plot_hmf2(
     overlay_eclipse=True,
     ionosonde_dct={'overlay_hmE': False},
     tdoa_csv_dct={
-        'csv_path': 'data/CSVs/2024-04-08_TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m_TDOA.csv',
-        'model_coeffs': model_coeffs
+        'csv_path_beatnote': 'data/CSVs/2024-04-08_TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m_manual_beatnote_analysis.csv',
+        'csv_path_autocorr': 'data/CSVs/2024-04-08_TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m_manual_autocorrelation_analysis.csv'
     }
 )
 ```
