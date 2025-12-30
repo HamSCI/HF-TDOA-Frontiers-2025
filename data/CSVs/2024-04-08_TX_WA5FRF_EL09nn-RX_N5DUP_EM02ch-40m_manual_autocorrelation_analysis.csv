@@ -1,0 +1,38 @@
+# This is a manual autocorrelation analysis done by J. Thomas McMahan K1FR.,,
+# tdoa_ms data in this CSV is taken from VERIFIED_2024-04-08_TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m_TDOA.xlsx,,
+# tdoa_hgt_km computed using model below.,,
+# Model: tdoa_hgt_km = 143*tdoa_ms+33,,
+#,,
+# TX: WA5FRF,,
+# TX Grid Square: EL09nn,,
+# RX: N5DUP,,
+# RX Grid Square: EM02ch,,
+# Frequency: 7 MHz,,
+# Sweep Rate: 10 Hz/ms,,
+#,,
+utc,tdoa_ms,tdoa_hgt_km
+14:13,1.681,273.383
+14:23,1.719,278.817
+14:33,1.473,243.639
+14:54,2.03,323.29
+15:03,1.879,301.697
+15:13,1.719,278.817
+15:23,2.106,334.158
+15:53,1.851,297.693
+16:03,1.785,288.255
+16:13,2.068,328.724
+16:23,1.898,304.414
+16:33,1.775,286.825
+17:23,1.719,278.817
+17:43,1.605,262.515
+17:53,1.804,290.972
+18:13,1.87,300.41
+18:24,1.86,298.98
+18:33,1.917,307.131
+18:45,2.002,319.286
+19:04,2.162,342.166
+19:26,2.068,328.724
+19:34,1.936,309.848
+19:43,1.974,315.282
+19:53,1.964,313.852
+20:13,1.7,276.1
