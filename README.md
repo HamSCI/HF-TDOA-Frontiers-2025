@@ -352,7 +352,7 @@ tdoa.plot_hmf2(
     overlay_eclipse=True,
     ionosonde_dct={'overlay_hmE': False},
     tdoa_csv_dct={
-        'csv_path_beatnote': 'data/CSVs/2024-04-08_TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m_manual_beatnote_analysis.csv',
+        'csv_path_period': 'data/CSVs/2024-04-08_TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m_manual_period_analysis.csv',
         'csv_path_autocorr': 'data/CSVs/2024-04-08_TX_WA5FRF_EL09nn-RX_N5DUP_EM02ch-40m_manual_autocorrelation_analysis.csv'
     }
 )

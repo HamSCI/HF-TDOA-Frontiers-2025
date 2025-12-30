@@ -1502,8 +1502,8 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
         Dictionary containing parameters to pass to overlay_ionosonde().
     tdoa_csv_dct : dict, optional
         Dictionary containing parameters to pass to overlay_tdoa_csv().
-        Supported keys: csv_path_beatnote, csv_path_autocorr, label_beatnote, label_autocorr,
-        color_beatnote, linestyle_beatnote, color_autocorr, linestyle_autocorr.
+        Supported keys: csv_path_period, csv_path_autocorr, label_period, label_autocorr,
+        color_period, linestyle_period, color_autocorr, linestyle_autocorr.
     show_date : bool, optional
         If True, show date in the title. Default is True.
     legend_loc : str, optional
@@ -1633,15 +1633,15 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
         Dictionary containing parameters to pass to overlay_tdoa_csv().
         If True, uses default parameters. If None, no TDOA CSV data is overlaid.
         Available parameters:
-            - csv_path_beatnote: Path to manual beatnote analysis CSV file (optional)
+            - csv_path_period: Path to manual period analysis CSV file (optional)
             - csv_path_autocorr: Path to manual autocorrelation analysis CSV file (optional)
-            - label_beatnote: Label for beatnote analysis (default: 'Manual Beatnote Analysis')
+            - label_period: Label for period analysis (default: 'Manual Period Analysis')
             - label_autocorr: Label for autocorrelation (default: 'Manual Autocorrelation Analysis')
-            - color_beatnote: Color for beatnote line (default: 'tab:blue')
-            - linestyle_beatnote: Linestyle for beatnote (default: 'dotted')
+            - color_period: Color for period line (default: 'tab:blue')
+            - linestyle_period: Linestyle for period (default: 'dotted')
             - color_autocorr: Color for autocorr line (default: 'tab:orange')
             - linestyle_autocorr: Linestyle for autocorr (default: 'dashdot')
-        Example: {'csv_path_beatnote': 'data/CSVs/beatnote.csv',
+        Example: {'csv_path_period': 'data/CSVs/period.csv',
                   'csv_path_autocorr': 'data/CSVs/autocorr.csv'}
         Default is None.
     savefig : str, optional
@@ -1997,47 +1997,47 @@ def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_AU930_AustinTX_I
                      hmF2_color='purple', hmE_color='brown')
 
 
-def overlay_tdoa_csv(ax, csv_path_beatnote=None, csv_path_autocorr=None,
-                     label_beatnote='Manual Beatnote Analysis',
+def overlay_tdoa_csv(ax, csv_path_period=None, csv_path_autocorr=None,
+                     label_period='Manual Period Analysis',
                      label_autocorr='Manual Autocorrelation Analysis',
-                     color_beatnote='tab:blue', linestyle_beatnote='dotted',
+                     color_period='tab:blue', linestyle_period='dotted',
                      color_autocorr='tab:orange', linestyle_autocorr='dashdot'):
     """
     Overlays manual TDOA analysis data from CSV files on an existing axes.
 
     This function loads verified manual TDOA measurements from CSV files
-    (either manual beatnote analysis or manual autocorrelation analysis)
+    (either manual period analysis or manual autocorrelation analysis)
     and plots the pre-calculated layer heights.
 
     Arguments:
     ax : matplotlib.axes.Axes
         The axes object to plot on.
-    csv_path_beatnote : str, optional
-        Path to the manual beatnote analysis CSV file. If None, beatnote data is not plotted.
+    csv_path_period : str, optional
+        Path to the manual period analysis CSV file. If None, period data is not plotted.
     csv_path_autocorr : str, optional
         Path to the manual autocorrelation analysis CSV file. If None, autocorr data is not plotted.
-    label_beatnote : str, optional
-        Label for beatnote analysis data. Default is 'Manual Beatnote Analysis'.
+    label_period : str, optional
+        Label for period analysis data. Default is 'Manual Period Analysis'.
     label_autocorr : str, optional
         Label for autocorrelation analysis data. Default is 'Manual Autocorrelation Analysis'.
-    color_beatnote : str, optional
-        Color for beatnote analysis line. Default is 'tab:blue'.
-    linestyle_beatnote : str, optional
-        Linestyle for beatnote analysis. Default is 'dotted'.
+    color_period : str, optional
+        Color for period analysis line. Default is 'tab:blue'.
+    linestyle_period : str, optional
+        Linestyle for period analysis. Default is 'dotted'.
     color_autocorr : str, optional
         Color for autocorrelation analysis line. Default is 'tab:orange'.
     linestyle_autocorr : str, optional
         Linestyle for autocorrelation analysis. Default is 'dashdot'.
     """
-    # Plot manual beatnote analysis if CSV path provided
-    if csv_path_beatnote is not None:
-        beatnote_df = load_tdoa_csv(csv_path_beatnote)
-        if 'manualBeatNote_height_km' in beatnote_df.columns:
-            ax.plot(beatnote_df.index, beatnote_df['manualBeatNote_height_km'],
-                    color=color_beatnote, linestyle=linestyle_beatnote,
-                    label=label_beatnote, linewidth=2)
-            ax.scatter(beatnote_df.index, beatnote_df['manualBeatNote_height_km'],
-                       color=color_beatnote)
+    # Plot manual period analysis if CSV path provided
+    if csv_path_period is not None:
+        period_df = load_tdoa_csv(csv_path_period)
+        if 'manualBeatNote_height_km' in period_df.columns:
+            ax.plot(period_df.index, period_df['manualBeatNote_height_km'],
+                    color=color_period, linestyle=linestyle_period,
+                    label=label_period, linewidth=2)
+            ax.scatter(period_df.index, period_df['manualBeatNote_height_km'],
+                       color=color_period)
 
     # Plot manual autocorrelation analysis if CSV path provided
     if csv_path_autocorr is not None:
