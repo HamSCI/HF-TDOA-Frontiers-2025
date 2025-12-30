@@ -1521,7 +1521,12 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
         overlay_tdoa_csv(ax, **tdoa_csv_dct)
 
     # Plot TDOA-derived layer heights (Automated Analysis)
-    for set_name, params in tdoa_dct.items():
+    # Sort modes by mean TDOA value (longest to shortest) for consistent legend ordering
+    sorted_modes = sorted(tdoa_dct.items(),
+                         key=lambda x: chirps[f'{x[0]}_mean'].mean(),
+                         reverse=True)
+
+    for set_name, params in sorted_modes:
         TDOAs = chirps[f'{set_name}_mean']
         coefs = params['model_coeffs']
         layer_heights = (coefs[0] * TDOAs) + coefs[1]
