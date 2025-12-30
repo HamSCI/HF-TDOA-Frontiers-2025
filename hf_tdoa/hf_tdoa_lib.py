@@ -923,7 +923,7 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     if not plot_correlation:
         pbar.close()
 
-    chirps = pd.DataFrame({'utc':utcs, 'data':wav_data, 'x':chirps_x, 'y':chirps_y, 'file':file})
+    chirps = pd.DataFrame({'utc':utcs, 'data':wav_data, 'x':chirps_x, 'y':chirps_y, 'file':wavlist})
     chirps.attrs['path_info'] = path_info
     chirps.attrs['pfx'] = path_info.pfx  # Keep for backward compatibility
     chirps.attrs['sweep_rate'] = sweep_rate
@@ -934,7 +934,7 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
 
 
 def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
-               mode_string='2F2-1F2', set_name=None, plot_fft=False, only_one=True, **overrides):
+               mode_string='2F2-1F2', set_name=None, plot_fft=False, plot_only_one=True, save_fft_dir=None, **overrides):
     """
     Finds TDOAs in a set of WAV files given chirp start locations.
 
@@ -970,8 +970,13 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
         Name of the column to store TDOA results. If None, uses mode_string as set_name.
     plot_fft : bool, optional
         If True, plots the FFT for each chirp analyzed. Default is False.
-    only_one : bool, optional
+    plot_only_one : bool, optional
         If True, processes only the first chirp in first WAV file. Used for debugging.
+    save_fft_dir : str, optional
+        Directory path to save FFT plots. If provided, all FFT plots are saved with unique
+        filenames instead of being displayed. Creates directory if it doesn't exist.
+        Filename format: {mode_string}_{file_index:03d}_{chirp_index:02d}.png
+        If None, FFT plots are only shown if plot_fft=True.
     **overrides : dict, optional
         Additional keyword arguments to override default mode configuration parameters.
 
@@ -997,6 +1002,10 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
         set_name = mode_string
     sweep_rate = wav_data.attrs['sweep_rate'] # Sweep rate in Hz/ms
 
+    # Create save directory if specified
+    if save_fft_dir is not None:
+        os.makedirs(save_fft_dir, exist_ok=True)
+
     # Print processing information
     print(f"\n{'='*70}")
     print(f"Processing Mode: {mode_string}")
@@ -1015,16 +1024,16 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     # Use tqdm progress bar for file processing
     pbar = tqdm(wav_data.iterrows(), total=len(wav_data),
                 desc=f"Finding TDOAs ({mode_string})",
-                unit="file", disable=only_one, dynamic_ncols=True)
+                unit="file", dynamic_ncols=True)
 
-    for file_num, row in pbar:
+    for idx, row in pbar:
         maxes = []
         wav_df = row['data']
-        fpath  = row['file']
+        fpath  = row['file']  # Now correctly has unique filename per row
         bname  = os.path.basename(fpath)
         wav_env, wav_fs = filter(wav_df, filter_limts[1], filter_limts[0])
 
-        for peak in wav_data['x'][file_num]:
+        for chirp_idx, peak in enumerate(row['x']):
             peak = peak/wav_fs
             tlim = (peak+search_limits[0], peak+search_limits[1])
             minfreq = search_limits[2]
@@ -1034,35 +1043,42 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
 
             maximum_x, maximum_y, local_peaks_x, local_peaks_y = find_max(freq, X_psd, minfreq, maxfreq)
 
-            if plot_fft:
+            # Determine if we should plot/save FFT
+            # Only plot/save if save_fft_dir is set (plot_fft is legacy behavior)
+            # When plot_only_one=True, only plot the first chirp (chirp_idx == 0)
+            should_plot = save_fft_dir is not None and (not plot_only_one or chirp_idx == 0)
+            if should_plot:
+                # Generate unique filename identifier (without .png extension)
+                # Format: {mode_string}_chirp{###}_{wav_filename}
+                # Each chirp is uniquely identified by its WAV file and chirp index
+                fname_noext = os.path.splitext(bname)[0]
+                plot_filename = f"{mode_string}_chirp{chirp_idx:03d}_{fname_noext}"
+                savefig_path = os.path.join(save_fft_dir, f"{plot_filename}.png")
+
                 plot_chirp_fft(title=bname, tlim=tlim,
                            minfreq=minfreq, maxfreq=maxfreq, wav_df=wav_df, sweep_rate=sweep_rate,
-                           env=wav_env['x'], tvec=wav_env.index, X_psd=X_psd, f=freq)
+                           env=wav_env['x'], tvec=wav_env.index, X_psd=X_psd, f=freq,
+                           savefig=savefig_path, plot_filename=plot_filename,
+                           mode_string=mode_string, chirp_number=chirp_idx)
 
             maxes.append(maximum_x)
-            if only_one:
-                break
 
         beat_arr = np.array(maxes).flatten()/sweep_rate  # TDOA in ms
-        if only_one:
-            break
+        all_beats.append(beat_arr)
+        # Handle case where beat_arr contains only NaN values
+        if len(beat_arr) > 0 and not np.all(np.isnan(beat_arr)):
+            mean_beats.append(np.nanmean(beat_arr))
         else:
-            all_beats.append(beat_arr)
-            # Handle case where beat_arr contains only NaN values
-            if len(beat_arr) > 0 and not np.all(np.isnan(beat_arr)):
-                mean_beats.append(np.nanmean(beat_arr))
-            else:
-                mean_beats.append(np.nan)
+            mean_beats.append(np.nan)
 
-            # Update progress bar with current file's mean TDOA
-            if len(beat_arr) > 0 and not np.all(np.isnan(beat_arr)):
-                pbar.set_postfix({'Mean TDOA': f'{np.nanmean(beat_arr):.2f} ms'})
+        # Update progress bar with current file's mean TDOA
+        if len(beat_arr) > 0 and not np.all(np.isnan(beat_arr)):
+            pbar.set_postfix({'Mean TDOA': f'{np.nanmean(beat_arr):.2f} ms'})
 
-    if not only_one:
-        pbar.close()
-        wav_data[set_name]           = all_beats
-        wav_data[f'{set_name}_mean'] = mean_beats
-        print(f"✓ Completed processing {mode_string}: {len(wav_data)} files processed\n")
+    pbar.close()
+    wav_data[set_name]           = all_beats
+    wav_data[f'{set_name}_mean'] = mean_beats
+    print(f"✓ Completed processing {mode_string}: {len(wav_data)} files processed\n")
 
     return wav_data
 
@@ -1252,13 +1268,13 @@ def title_from_pfx(ax, pfx, date=None, center_title=None):
         ax.set_title(center_text, loc='center', fontsize=26)
 
 
-def plot_chirp_fft(title, tlim, minfreq, maxfreq, wav_df, sweep_rate, env, tvec, X_psd, f):
+def plot_chirp_fft(title, tlim, minfreq, maxfreq, wav_df, sweep_rate, env, tvec, X_psd, f, savefig=None, plot_filename=None, mode_string=None, chirp_number=None):
     """
     Plots the FFT of a chirp signal along with its envelope and raw waveform.
 
     Arguments:
     title : str
-        Title for the plot.
+        Title for the plot (WAV filename).
     tlim : tuple
         Time limits (start, end) for the chirp signal.
     minfreq : float
@@ -1277,6 +1293,14 @@ def plot_chirp_fft(title, tlim, minfreq, maxfreq, wav_df, sweep_rate, env, tvec,
         Power Spectral Density of the chirp signal.
     f : np.ndarray
         Frequency vector corresponding to the PSD.
+    savefig : str, optional
+        Path to save the figure. If None, figure is displayed but not saved.
+    plot_filename : str, optional
+        Filename identifier (without extension) to display in the title.
+    mode_string : str, optional
+        Mode string (e.g., '2F2-1F2') to display in the title.
+    chirp_number : int, optional
+        Chirp number to display in the title.
     """
     if maxfreq == 0:
         maxfreq = 10000
@@ -1287,77 +1311,93 @@ def plot_chirp_fft(title, tlim, minfreq, maxfreq, wav_df, sweep_rate, env, tvec,
     fig = plt.figure(figsize=(15,15))
 
     nax += 1
-    ax  = fig.add_subplot(nrows, 1, nax)
+    ax1  = fig.add_subplot(nrows, 1, nax)
     if wav_df is not None:
         xx = wav_df.index
         yy = wav_df['x']
-        ax.plot(xx, yy)
-        ax.set_xlabel('Time [s]')
-        ax.set_ylabel('Amplitude')
-        ax.axvspan(*tlim, color='red', label='Selected Chirp')
-        ax.legend(loc='upper right')
+        ax1.plot(xx, yy)
+        ax1.set_xlabel('Time [s]')
+        ax1.set_ylabel('Amplitude')
+        ax1.axvspan(*tlim, color='red', label='Selected Chirp')
+        ax1.legend(loc='upper right')
 
     nax += 1
-    ax  = fig.add_subplot(nrows, 1, nax)
+    ax2  = fig.add_subplot(nrows, 1, nax)
 
     dc_offset = 0
     if wav_df is not None:
         tf  = np.logical_and(wav_df.index >= tlim[0], wav_df.index <  tlim[1])
         wav_xx = wav_df.index[tf]
         wav_yy = wav_df['x'][tf]
-        ax.plot(wav_xx, wav_yy, label='Raw WAV')
+        ax2.plot(wav_xx, wav_yy, label='Raw WAV')
         dc_offset = np.mean(np.abs(wav_yy))
 
     env_xx = tvec
     env_yy = env + dc_offset
-    ax.plot(env_xx, env_yy, lw=3, color='red', label='Filtered Envelope')
-    ax.set_xlim(tlim)
-    ax.set_xlabel('Time [s]')
-    ax.set_ylabel('Amplitude')
-    ax.legend(loc='upper right')
-    ax.set_ylim(0, None)
+    ax2.plot(env_xx, env_yy, lw=3, color='red', label='Filtered Envelope')
+    ax2.set_xlim(tlim)
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel('Amplitude')
+    ax2.legend(loc='upper right')
+    ax2.set_ylim(0, None)
 
     nax += 1
-    ax = fig.add_subplot(nrows, 1, nax)
-    ax.plot(f, X_psd)
+    ax3 = fig.add_subplot(nrows, 1, nax)
+    ax3.plot(f, X_psd)
 
     maximum_x, maximum_y, local_peaks_x, local_peaks_y = find_max(f, X_psd, minfreq, maxfreq)
 
-    ax.plot([maximum_x, maximum_x], [0, maximum_y], linewidth=2)
-    ax.plot([0, maximum_x], [maximum_y, maximum_y], linewidth=2, color='red')
-    ax.plot([minfreq, minfreq], [0, maximum_y], linewidth=3, color='black')
+    ax3.plot([maximum_x, maximum_x], [0, maximum_y], linewidth=2)
+    ax3.plot([0, maximum_x], [maximum_y, maximum_y], linewidth=2, color='red')
+    ax3.plot([minfreq, minfreq], [0, maximum_y], linewidth=3, color='black')
 
     lbl = []
     lbl.append(f'$f_b = {maximum_x:0.2f}$ Hz')
     lbl.append(f'TDOA = {maximum_x/sweep_rate:0.2f} ms')
-    ax.scatter(maximum_x, maximum_y, linewidths=5, label='\n'.join(lbl), color='green')
-    ax.scatter(local_peaks_x, local_peaks_y, color='black')
-    ax.set_xlim(flim)
-    ax.set_ylim(0, 10*10**-5)
-    ax.set_xlabel('Frequency [Hz]')
-    ax.set_ylabel('$|X(f)|^2$')
+    ax3.scatter(maximum_x, maximum_y, linewidths=5, label='\n'.join(lbl), color='green')
+    ax3.scatter(local_peaks_x, local_peaks_y, color='black')
+    ax3.set_xlim(flim)
+    ax3.set_ylim(0, None)
+    ax3.set_xlabel('Frequency [Hz]')
+    ax3.set_ylabel('$|X(f)|^2$')
 
     # Make x-labels with both beat frequency and TDOA values.
-    xticks = ax.get_xticks()
-    ax.set_xticks(xticks)
+    xticks = ax3.get_xticks()
+    ax3.set_xticks(xticks)
     xtls = []
     for xtk in xticks:
         tdoa = xtk/sweep_rate
         xtl = f'{xtk:0.1f}\n{tdoa:0.1f}'
         xtls.append(xtl)
     xtls[-1] = 'f [Hz]\nTDOA [ms]'
-    ax.set_xticklabels(xtls)
-    ax.set_xlabel('')
+    ax3.set_xticklabels(xtls)
+    ax3.set_xlabel('')
 
-    ax.legend()
+    ax3.legend()
 
     _title = []
-    _title.append(title)
+    _title.append(title)  # WAV filename
+    if mode_string is not None and chirp_number is not None:
+        _title.append(f'Mode: {mode_string}  Chirp #{chirp_number:03d}')
     _title.append(f'Chirp Sweep Rate: {sweep_rate} Hz/ms')
     plt.suptitle('\n'.join(_title))
 
     plt.tight_layout()
-    plt.show()
+
+    # Add subplot labels (a), (b), (c) after layout adjustment
+    ypos = 1.12
+    ax1.text(-0.08, ypos, '(a)', transform=ax1.transAxes,
+            fontsize=30, fontweight='bold', va='top', ha='left')
+    ax2.text(-0.08, ypos, '(b)', transform=ax2.transAxes,
+            fontsize=30, fontweight='bold', va='top', ha='left')
+    ax3.text(-0.08, ypos, '(c)', transform=ax3.transAxes,
+            fontsize=30, fontweight='bold', va='top', ha='left')
+
+    if savefig is not None:
+        plt.savefig(savefig, dpi=150, bbox_inches='tight')
+    else:
+        plt.show()
+
     plt.close(fig)
 
 
