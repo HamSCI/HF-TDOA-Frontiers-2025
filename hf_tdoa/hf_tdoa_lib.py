@@ -2469,9 +2469,14 @@ def overlay_tdoa_csv(ax, csv_path_period=None, csv_path_autocorr=None,
 # Scatter Plot Comparison Functions
 # ============================================================================
 
-def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='5min', method='linear'):
+def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='1min', method='linear'):
     """
-    Align and resample TDOA data to match ionosonde timestamps.
+    Align TDOA data with ionosonde measurements using high-resolution ionosonde interpolation.
+
+    This function resamples and interpolates the ionosonde data to a fine time resolution
+    (1 minute by default), then matches each TDOA measurement to the nearest interpolated
+    ionosonde value. This preserves the exact number of TDOA measurements while providing
+    accurate ionosonde hmF2 values at the TDOA measurement times.
 
     Parameters:
     -----------
@@ -2480,7 +2485,7 @@ def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='5min', method=
     ionosonde_df : pd.DataFrame
         Ionosonde data with datetime index and hmF2 column
     resample_rule : str, optional
-        Resampling frequency rule (default: '5min' to match ionosonde)
+        Resampling frequency for ionosonde interpolation (default: '1min')
     method : str, optional
         Interpolation method: 'linear', 'nearest', etc. (default: 'linear')
 
@@ -2488,35 +2493,36 @@ def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='5min', method=
     --------
     aligned_df : pd.DataFrame
         DataFrame with columns: tdoa_height, hmF2, with aligned timestamps
+        Contains exactly one row per original TDOA measurement
     tdoa_resampled : pd.DataFrame
-        Resampled TDOA data for validation plotting
+        Copy of original TDOA data (for validation plotting)
     """
-    # Resample TDOA data to match ionosonde frequency
-    tdoa_resampled = tdoa_df.resample(resample_rule).mean()
-
-    # Interpolate to fill gaps (optional, for smoother comparison)
+    # Resample ionosonde data to fine resolution (1 minute) and interpolate
+    ionosonde_resampled = ionosonde_df[['hmF2']].resample(resample_rule).mean()
     if method == 'linear':
-        tdoa_resampled = tdoa_resampled.interpolate(method='time')
+        ionosonde_resampled = ionosonde_resampled.interpolate(method='time')
 
-    # Rename the height column to a standard name for merging
-    tdoa_resampled_renamed = tdoa_resampled.copy()
-    tdoa_resampled_renamed.columns = ['tdoa_height']
+    # Rename the TDOA height column to a standard name for merging
+    tdoa_renamed = tdoa_df.copy()
+    tdoa_renamed.columns = ['tdoa_height']
 
-    # Use merge_asof for time-tolerance matching (allows small time differences)
-    # This handles cases where timestamps don't exactly match (e.g., :00 vs :05 seconds)
+    # Use merge_asof for time-tolerance matching
+    # This matches each TDOA measurement to the nearest ionosonde value
+    # Result will have exactly as many rows as TDOA measurements
     aligned_df = pd.merge_asof(
-        tdoa_resampled_renamed.sort_index(),
-        ionosonde_df[['hmF2']].sort_index(),
+        tdoa_renamed.sort_index(),
+        ionosonde_resampled.sort_index(),
         left_index=True,
         right_index=True,
         direction='nearest',
-        tolerance=pd.Timedelta('3min')  # Allow up to 3 minutes difference
+        tolerance=pd.Timedelta('2min')  # Allow up to 2 minutes difference
     )
 
-    # Drop rows with NaN values
+    # Drop rows with NaN values (shouldn't be any with good ionosonde coverage)
     aligned_df = aligned_df.dropna()
 
-    return aligned_df, tdoa_resampled
+    # Return original TDOA data for validation plotting
+    return aligned_df, tdoa_df
 
 
 def plot_resampling_validation(original_df, resampled_df, label, color,
@@ -2629,10 +2635,16 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
         rmse = np.sqrt(np.mean((tdoa_valid - iono_valid)**2))
         bias = np.mean(tdoa_valid - iono_valid)
 
+        # Calculate percent errors using ionosonde as reference (accepted values)
+        rmse_percent = (rmse / np.mean(iono_valid)) * 100
+        bias_percent = (bias / np.mean(iono_valid)) * 100
+
         stats = {
             'correlation': correlation,
             'rmse': rmse,
             'bias': bias,
+            'rmse_percent': rmse_percent,
+            'bias_percent': bias_percent,
             'n_points': len(tdoa_valid)
         }
 
@@ -2702,7 +2714,7 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
             ax.set_ylabel('HF TDOA Height (km)', fontweight='bold')
             ax.set_title(f"TDOA vs Ionosonde hmF2\n{dataset['label']}",
                         fontweight='bold')
-            ax.legend(loc='upper left')
+            ax.legend(loc='upper right', fontsize='small')
             ax.grid(True, alpha=0.3)
 
             # Set axis limits and aspect ratio
@@ -2732,9 +2744,14 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
 
             results[dataset['label']] = stats
 
-    # Create combined plot
+    # Create combined plot with statistics table
     if combined_plot:
-        fig, ax = plt.subplots(figsize=(10, 10))
+        # Create figure with two panels: (a) scatter plot, (b) statistics table
+        fig = plt.figure(figsize=(20, 8))
+        gs = fig.add_gridspec(1, 2, width_ratios=[1, 1.2], wspace=0.3)
+
+        # Panel (a): Scatter plot
+        ax_scatter = fig.add_subplot(gs[0, 0])
 
         for idx, dataset in enumerate(datasets):
             # Align and resample data
@@ -2743,30 +2760,113 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
             )
 
             # Create scatter plot
-            ax, stats = plot_scatter_comparison(
+            ax_scatter, stats = plot_scatter_comparison(
                 aligned_df['tdoa_height'],
                 aligned_df['hmF2'],
                 label=dataset['label'],
                 color=dataset['color'],
                 marker=dataset.get('marker', 'o'),
-                ax=ax,
-                show_1to1=(idx == 0)  # Only show line once (first dataset)
+                ax=ax_scatter,
+                show_1to1=False  # Don't show 1:1 line
             )
 
             results[dataset['label']] = stats
 
-        # Add labels and title
-        ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold')
-        ax.set_ylabel('HF TDOA Height (km)', fontweight='bold')
-        ax.set_title('HF TDOA vs Ionosonde hmF2 - All Datasets',
-                    fontweight='bold', fontsize=18)
-        ax.legend(loc='upper left', fontsize=10)
-        ax.grid(True, alpha=0.3)
+        # Add labels and title for scatter plot
+        ax_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold')
+        ax_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold')
+        ax_scatter.set_title('(a) HF TDOA vs Ionosonde hmF2',
+                            fontweight='bold', fontsize=16, loc='left')
+        ax_scatter.legend(loc='upper right', fontsize='small')
+        ax_scatter.grid(True, alpha=0.3)
 
         # Set axis limits and aspect ratio
-        ax.set_xlim(200, 400)
-        ax.set_ylim(200, 400)
-        ax.set_aspect('equal')
+        ax_scatter.set_xlim(200, 400)
+        ax_scatter.set_ylim(200, 400)
+        ax_scatter.set_aspect('equal')
+
+        # Panel (b): Statistics table with symbols
+        ax_table = fig.add_subplot(gs[0, 1])
+        ax_table.axis('off')
+        ax_table.set_title('(b) Correlation Statistics',
+                          fontweight='bold', fontsize=16, loc='left', pad=20)
+
+        # Prepare table data (we'll add symbols manually)
+        table_data = []
+        for dataset in datasets:
+            label = dataset['label']
+            if label in results and results[label]:
+                stats = results[label]
+                table_data.append([
+                    '',  # Placeholder for symbol
+                    label,
+                    f"{stats['n_points']}",
+                    f"{stats['correlation']:.3f}",
+                    f"{stats['rmse_percent']:.1f}%",
+                    f"{stats['bias_percent']:.1f}%"
+                ])
+
+        # Create table with extra column for symbols
+        table = ax_table.table(
+            cellText=table_data,
+            colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
+            cellLoc='left',
+            loc='upper center',
+            bbox=[0, 0, 1, 0.9]
+        )
+
+        # Style the table
+        table.auto_set_font_size(False)
+        table.set_fontsize(11)
+        table.scale(1, 2.5)
+
+        # Set custom column widths: [symbol, dataset, n, r, RMSE, Bias]
+        col_widths = [0.08, 0.35, 0.10, 0.12, 0.15, 0.15]
+        for row in range(len(datasets) + 1):  # +1 for header
+            for col in range(6):
+                cell = table[(row, col)]
+                cell.set_width(col_widths[col])
+
+        # Color header row
+        for i in range(6):
+            cell = table[(0, i)]
+            cell.set_facecolor('#4472C4')
+            cell.set_text_props(weight='bold', color='white')
+
+        # Alternate row colors
+        for idx, dataset in enumerate(datasets):
+            row_idx = idx + 1
+            for j in range(6):
+                cell = table[(row_idx, j)]
+                if row_idx % 2 == 0:
+                    cell.set_facecolor('#E7E6E6')
+                else:
+                    cell.set_facecolor('white')
+
+        # Add symbols using scatter plot in table coordinates
+        # The table is positioned at bbox=[0, 0, 1, 0.9], so we calculate relative positions
+        num_rows = len(datasets) + 1  # +1 for header
+        row_height = 0.9 / num_rows
+
+        for idx, dataset in enumerate(datasets):
+            row_idx = idx + 1
+            # Calculate y position (from top, accounting for header)
+            y_pos = 0.9 - (row_idx + 0.5) * row_height
+            # X position in first column (centered)
+            x_pos = 0.04  # Small offset for first column center
+
+            # Add marker
+            ax_table.plot(
+                x_pos, y_pos,
+                marker=dataset.get('marker', 'o'),
+                color=dataset['color'],
+                markersize=12,
+                markeredgecolor='black',
+                markeredgewidth=0.5,
+                linestyle='',
+                transform=ax_table.transAxes,
+                clip_on=False
+            )
 
         # Save or show
         if output_dir:
