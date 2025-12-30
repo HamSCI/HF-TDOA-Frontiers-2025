@@ -1521,7 +1521,7 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
         layer_heights = (coefs[0] * TDOAs) + coefs[1]
 
         ax.plot(times, layer_heights,
-                label=set_name,
+                label=f'Automated Analysis: {set_name}',
                 marker=params.get('marker', 'o'),
                 linestyle=params.get('linestyle'),
                 linewidth=params.get('linewidth'),
