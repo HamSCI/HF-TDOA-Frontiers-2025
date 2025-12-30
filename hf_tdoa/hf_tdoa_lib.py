@@ -2918,8 +2918,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
 
     # Create figure with 2x2 grid
     fig = plt.figure(figsize=(24, 16))
-    gs = GridSpec(2, 2, figure=fig, width_ratios=[1, 1.2], height_ratios=[1, 1],
-                  hspace=0.3, wspace=0.3)
+    gs = GridSpec(2, 2, figure=fig, width_ratios=[1, 1], height_ratios=[1, 1],
+                  hspace=0.3, wspace=0.05)
 
     # ========================================================================
     # Top Row: Manual Analysis
@@ -2950,12 +2950,12 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Style manual scatter plot
     ax_manual_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
     ax_manual_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
-    ax_manual_scatter.set_title('(a) Manual Analysis: HF TDOA vs Ionosonde hmF2',
+    ax_manual_scatter.set_title('(a) Manual Analysis',
                                 fontweight='bold', fontsize=16, loc='left')
-    ax_manual_scatter.legend(loc='upper right', fontsize='small')
+    # ax_manual_scatter.legend(loc='upper right', fontsize='small')  # Legend removed
     ax_manual_scatter.grid(True, alpha=0.3)
-    ax_manual_scatter.set_xlim(200, 400)
-    ax_manual_scatter.set_ylim(200, 400)
+    ax_manual_scatter.set_xlim(200, 350)
+    ax_manual_scatter.set_ylim(200, 350)
     ax_manual_scatter.set_aspect('equal')
 
     # Panel (b): Manual statistics table
@@ -2984,8 +2984,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         cellText=manual_table_data,
         colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
         cellLoc='left',
-        loc='upper center',
-        bbox=[0, 0, 1, 0.9]
+        loc='upper left',
+        bbox=[-0.2, 0, 1.0, 0.9]
     )
 
     # Style manual table
@@ -3022,7 +3022,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     for idx, dataset in enumerate(manual_datasets):
         row_idx = idx + 1
         y_pos = 0.9 - (row_idx + 0.5) * row_height_manual
-        x_pos = 0.04
+        x_pos = -0.16  # Adjusted for shifted table (was 0.04)
         ax_manual_table.plot(
             x_pos, y_pos,
             marker=dataset.get('marker', 'o'),
@@ -3064,12 +3064,12 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Style automated scatter plot
     ax_auto_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
     ax_auto_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
-    ax_auto_scatter.set_title('(c) Automated Analysis: HF TDOA vs Ionosonde hmF2',
+    ax_auto_scatter.set_title('(c) Automated Analysis',
                               fontweight='bold', fontsize=16, loc='left')
-    ax_auto_scatter.legend(loc='upper right', fontsize='small')
+    # ax_auto_scatter.legend(loc='upper right', fontsize='small')  # Legend removed
     ax_auto_scatter.grid(True, alpha=0.3)
-    ax_auto_scatter.set_xlim(200, 400)
-    ax_auto_scatter.set_ylim(200, 400)
+    ax_auto_scatter.set_xlim(200, 350)
+    ax_auto_scatter.set_ylim(200, 350)
     ax_auto_scatter.set_aspect('equal')
 
     # Panel (d): Automated statistics table
@@ -3098,8 +3098,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         cellText=auto_table_data,
         colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
         cellLoc='left',
-        loc='upper center',
-        bbox=[0, 0, 1, 0.9]
+        loc='upper left',
+        bbox=[-0.2, 0, 1.0, 0.9]
     )
 
     # Style automated table
@@ -3135,7 +3135,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     for idx, dataset in enumerate(automated_datasets):
         row_idx = idx + 1
         y_pos = 0.9 - (row_idx + 0.5) * row_height_auto
-        x_pos = 0.04
+        x_pos = -0.16  # Adjusted for shifted table (was 0.04)
         ax_auto_table.plot(
             x_pos, y_pos,
             marker=dataset.get('marker', 'o'),
