@@ -19,6 +19,7 @@ from . import rayTracePaths
 from .hf_tdoa_lib import (
     # Classes
     PathInfo,
+    TDOAData,
 
     # Configuration
     MODE_CONFIGS,
@@ -68,6 +69,7 @@ __all__ = [
 
     # HF TDOA exports
     'PathInfo',
+    'TDOAData',
     'MODE_CONFIGS',
     'setup_plotting_style',
     'obtain_wav_list',

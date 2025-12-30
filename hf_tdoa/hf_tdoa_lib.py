@@ -132,6 +132,196 @@ MODE_CONFIGS = {
 # Core Data Classes
 # ============================================================================
 
+class TDOAData:
+    """
+    Class for loading and analyzing TDOA data from CSV files.
+
+    This class loads automated TDOA analysis results from CSV files and provides
+    methods for plotting and analyzing the data.
+
+    Attributes:
+    -----------
+    csv_path : str
+        Path to the CSV file
+    df : pd.DataFrame
+        DataFrame containing the TDOA data with UTC index
+    metadata : dict
+        Dictionary containing metadata parsed from CSV header
+    """
+
+    def __init__(self, csv_path):
+        """
+        Initialize TDOAData by loading a CSV file.
+
+        Parameters:
+        -----------
+        csv_path : str
+            Path to the TDOA CSV file
+        """
+        self.csv_path = csv_path
+        self.metadata = {}
+        self.df = self._load_csv()
+
+    def _load_csv(self):
+        """
+        Load CSV file and parse metadata from header.
+
+        Returns:
+        --------
+        df : pd.DataFrame
+            DataFrame with UTC index and TDOA data
+        """
+        # Parse metadata from header comments
+        with open(self.csv_path, 'r') as f:
+            for line in f:
+                if not line.startswith('#'):
+                    break
+                # Parse key-value pairs from header
+                if ':' in line:
+                    line = line.lstrip('#').strip()
+                    if line.startswith('TX:'):
+                        self.metadata['tx_call'] = line.split(':', 1)[1].strip()
+                    elif line.startswith('TX Grid Square:'):
+                        self.metadata['tx_grid'] = line.split(':', 1)[1].strip()
+                    elif line.startswith('RX:'):
+                        self.metadata['rx_call'] = line.split(':', 1)[1].strip()
+                    elif line.startswith('RX Grid Square:'):
+                        self.metadata['rx_grid'] = line.split(':', 1)[1].strip()
+                    elif line.startswith('Frequency:'):
+                        self.metadata['frequency'] = line.split(':', 1)[1].strip()
+                    elif line.startswith('Ground Range:'):
+                        range_str = line.split(':', 1)[1].strip()
+                        self.metadata['ground_range_km'] = float(range_str.split()[0])
+                    elif line.startswith('Propagation Mode:'):
+                        self.metadata['mode'] = line.split(':', 1)[1].strip()
+                    elif line.startswith('Model:'):
+                        self.metadata['model_equation'] = line.split(':', 1)[1].strip()
+                    elif line.startswith('Generated:'):
+                        self.metadata['generated'] = line.split(':', 1)[1].strip()
+
+        # Load CSV data
+        df = pd.read_csv(self.csv_path, comment='#', parse_dates=['utc'])
+        df = df.set_index('utc')
+
+        return df
+
+    def plot(self, savefig=None, ylim_tdoa=None, ylim_height=None, figsize=(16, 12)):
+        """
+        Create a publication-quality plot of TDOA measurements and layer heights.
+
+        Creates a two-panel figure with:
+        - Top panel: TDOA measurements vs time
+        - Bottom panel: Layer heights vs time
+
+        Parameters:
+        -----------
+        savefig : str, optional
+            If provided, saves the figure to this file path. High-resolution JPEG recommended.
+            If None (default), figure is displayed but not saved to disk.
+        ylim_tdoa : tuple, optional
+            Y-axis limits for TDOA plot (min, max). If None, uses automatic scaling.
+        ylim_height : tuple, optional
+            Y-axis limits for height plot (min, max). If None, uses automatic scaling.
+        figsize : tuple, optional
+            Figure size (width, height). Default is (16, 12).
+
+        Returns:
+        --------
+        fig : matplotlib.figure.Figure
+            The created figure object
+        """
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=figsize)
+
+        # Plot TDOA measurements
+        ax1.plot(self.df.index, self.df['mean_tdoa_ms'],
+                marker='o', linestyle='-', linewidth=2, markersize=6,
+                color='tab:blue', label=f"Mode: {self.metadata.get('mode', 'N/A')}")
+        ax1.set_ylabel('TDOA [ms]')
+        ax1.set_xlabel('Time UTC')
+        ax1.legend(loc='best')
+        ax1.grid(True, linestyle=':', alpha=0.7)
+        if ylim_tdoa is not None:
+            ax1.set_ylim(ylim_tdoa)
+
+        # Format datetime axis
+        _format_datetime_axis(ax1)
+
+        # Add title with path information
+        if 'tx_call' in self.metadata and 'rx_call' in self.metadata:
+            title_left = f"TX: {self.metadata['tx_call']} ({self.metadata.get('tx_grid', 'N/A')})\n"
+            title_left += f"RX: {self.metadata['rx_call']} ({self.metadata.get('rx_grid', 'N/A')})"
+            ax1.set_title(title_left, loc='left', fontsize=14)
+
+            if 'ground_range_km' in self.metadata and 'frequency' in self.metadata:
+                title_right = f"Ground Range: {self.metadata['ground_range_km']:.1f} km\n"
+                title_right += f"Band: {self.metadata['frequency']}"
+                ax1.set_title(title_right, loc='right', fontsize=14)
+
+        # Add center title with mode
+        if 'mode' in self.metadata:
+            # Get date from first timestamp
+            date_str = self.df.index[0].strftime('%Y %b %d')
+            ax1.set_title(f"TDOA\n{date_str}", loc='center', fontsize=18, fontweight='bold')
+
+        # Plot layer heights
+        ax2.plot(self.df.index, self.df['mean_tdoa_hgt_km'],
+                marker='o', linestyle='-', linewidth=2, markersize=6,
+                color='tab:green', label=f"Mode: {self.metadata.get('mode', 'N/A')}")
+        ax2.set_ylabel('Layer Height [km]')
+        ax2.set_xlabel('Time UTC')
+        ax2.legend(loc='best')
+        ax2.grid(True, linestyle=':', alpha=0.7)
+        if ylim_height is not None:
+            ax2.set_ylim(ylim_height)
+
+        # Format datetime axis
+        _format_datetime_axis(ax2)
+
+        # Add title with path information
+        if 'tx_call' in self.metadata and 'rx_call' in self.metadata:
+            ax2.set_title(title_left, loc='left', fontsize=14)
+            if 'ground_range_km' in self.metadata and 'frequency' in self.metadata:
+                ax2.set_title(title_right, loc='right', fontsize=14)
+
+        # Add center title
+        if 'mode' in self.metadata:
+            ax2.set_title(f"Ionospheric Layer Height\n{date_str}", loc='center',
+                         fontsize=18, fontweight='bold')
+
+        # Add subplot labels
+        ax1.text(-0.08, 1.075, '(a)', transform=ax1.transAxes,
+                fontsize=24, fontweight='bold', va='top', ha='left')
+        ax2.text(-0.08, 1.075, '(b)', transform=ax2.transAxes,
+                fontsize=24, fontweight='bold', va='top', ha='left')
+
+        # Rotate x-axis labels
+        for ax in [ax1, ax2]:
+            for tick_label in ax.get_xticklabels():
+                tick_label.set_rotation(45)
+                tick_label.set_horizontalalignment('right')
+
+        # Apply tight layout to prevent overlapping elements
+        fig.tight_layout()
+
+
+        # Save figure if filename provided
+        if savefig is not None:
+            fig.savefig(savefig, dpi=300, bbox_inches='tight', format='jpeg',
+                       pil_kwargs={'quality': 95})
+            print(f"Figure saved to: {savefig}")
+            plt.close(fig)  # Close the figure to free memory
+            return None
+
+        return fig
+
+    def __repr__(self):
+        """String representation of TDOAData."""
+        mode = self.metadata.get('mode', 'N/A')
+        n_points = len(self.df)
+        return (f"TDOAData(mode='{mode}', n_points={n_points}, "
+                f"csv_path='{os.path.basename(self.csv_path)}')")
+
+
 class PathInfo:
     """
     Parses and stores transmitter/receiver path information from a prefix string.
