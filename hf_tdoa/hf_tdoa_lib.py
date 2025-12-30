@@ -1514,7 +1514,13 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
     """
     times = chirps['utc']
 
-    # Plot TDOA-derived layer heights
+    # Overlay TDOA CSV data first (Manual Period and Autocorrelation Analysis)
+    if (tdoa_csv_dct is not None) and (tdoa_csv_dct is not False):
+        if tdoa_csv_dct is True:
+            tdoa_csv_dct = {}
+        overlay_tdoa_csv(ax, **tdoa_csv_dct)
+
+    # Plot TDOA-derived layer heights (Automated Analysis)
     for set_name, params in tdoa_dct.items():
         TDOAs = chirps[f'{set_name}_mean']
         coefs = params['model_coeffs']
@@ -1527,23 +1533,17 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
                 linewidth=params.get('linewidth'),
                 color=params.get('color'))
 
-    ax.set_ylim(ylim)
-
-    _format_datetime_axis(ax)
-    ax.set_ylabel('Layer Height [km]')
-    ax.set_xlabel('Time UTC')
-
-    # Overlay ionosonde data if requested
+    # Overlay ionosonde data last (Austin hmF2)
     if (ionosonde_dct is not None) and (ionosonde_dct is not False):
         if ionosonde_dct is True:
             ionosonde_dct = {}
         overlay_ionosonde(ax, **ionosonde_dct)
 
-    # Overlay TDOA CSV data if requested
-    if (tdoa_csv_dct is not None) and (tdoa_csv_dct is not False):
-        if tdoa_csv_dct is True:
-            tdoa_csv_dct = {}
-        overlay_tdoa_csv(ax, **tdoa_csv_dct)
+    ax.set_ylim(ylim)
+
+    _format_datetime_axis(ax)
+    ax.set_ylabel('Layer Height [km]')
+    ax.set_xlabel('Time UTC')
 
     # Add solar elevation and/or eclipse obscuration overlays if requested
     if overlay_solar_elevation or overlay_eclipse:
