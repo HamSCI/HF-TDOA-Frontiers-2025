@@ -1591,7 +1591,9 @@ def _plot_hmf2_on_axis(ax, chirps, tdoa_dct, ylim=(75,450),
 def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
               solar_lat=None, solar_lon=None, solar_start=None, solar_end=None,
               overlay_solar_elevation=False, overlay_eclipse=False,
-              ionosonde_dct=None, tdoa_csv_dct=None, savefig=None):
+              ionosonde_dct=None, tdoa_csv_dct=None,
+              legend_loc='best', legend_fontsize=None,
+              savefig=None):
     """
     Plots layer heights derived from TDOAs and compares with ionosonde measurements.
 
@@ -1644,6 +1646,11 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
         Example: {'csv_path_period': 'data/CSVs/period.csv',
                   'csv_path_autocorr': 'data/CSVs/autocorr.csv'}
         Default is None.
+    legend_loc : str, optional
+        Legend location. Default is 'best'. Can be 'upper left', 'upper right', 'lower left',
+        'lower right', 'center', 'best', etc.
+    legend_fontsize : int or str, optional
+        Legend font size. If None, uses matplotlib default. Can be int or 'small', 'medium', 'large', etc.
     savefig : str, optional
         If provided, saves the figure to this file path. High-resolution JPEG recommended.
         If None (default), figure is not saved to disk.
@@ -1660,7 +1667,9 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
         overlay_eclipse=overlay_eclipse,
         ionosonde_dct=ionosonde_dct,
         tdoa_csv_dct=tdoa_csv_dct,
-        show_date=True
+        show_date=True,
+        legend_loc=legend_loc,
+        legend_fontsize=legend_fontsize
     )
 
     # Set x-axis limits if provided
