@@ -854,6 +854,49 @@ def load_tdoa_csv(csv_path):
     return tdoa_df
 
 
+def load_tdoa_csv_generic(csv_path):
+    """
+    Loads TDOA data from either manual or automated analysis CSV files.
+
+    This is a generic loader that handles both:
+    - Manual analysis CSVs with 'tdoa_hgt_km' column
+    - Automated analysis CSVs with 'mean_tdoa_hgt_km' column
+
+    Arguments:
+    csv_path : str
+        Path to the CSV file containing TDOA data.
+
+    Returns:
+    tdoa_df : pd.DataFrame
+        DataFrame containing:
+        - UTC datetime index
+        - height_km: Layer heights (from either manual or automated analysis)
+    """
+    # Load CSV with ISO 8601 datetime parsing, skipping comment lines starting with #
+    tdoa_df = pd.read_csv(
+        csv_path,
+        parse_dates=['utc'],
+        date_format='%Y-%m-%d %H:%M',
+        comment='#'
+    )
+    tdoa_df = tdoa_df.set_index('utc')
+
+    # Determine which type of CSV this is and extract height column
+    if 'tdoa_hgt_km' in tdoa_df.columns:
+        # Manual analysis CSV
+        tdoa_df['height_km'] = tdoa_df['tdoa_hgt_km']
+    elif 'mean_tdoa_hgt_km' in tdoa_df.columns:
+        # Automated analysis CSV
+        tdoa_df['height_km'] = tdoa_df['mean_tdoa_hgt_km']
+    else:
+        raise ValueError(
+            f"CSV file {csv_path} must contain either 'tdoa_hgt_km' (manual) "
+            f"or 'mean_tdoa_hgt_km' (automated) column"
+        )
+
+    return tdoa_df[['height_km']]
+
+
 def save_tdoa_csv(chirps, mode_string, tdoa_config, output_dir, date_str=None):
     """
     Saves TDOA measurements and derived layer heights to a CSV file.
@@ -2420,3 +2463,318 @@ def overlay_tdoa_csv(ax, csv_path_period=None, csv_path_autocorr=None,
                     label=label_autocorr, linewidth=2)
             ax.scatter(autocorr_df.index, autocorr_df['manualBeatNote_height_km'],
                        color=color_autocorr)
+
+
+# ============================================================================
+# Scatter Plot Comparison Functions
+# ============================================================================
+
+def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='5min', method='linear'):
+    """
+    Align and resample TDOA data to match ionosonde timestamps.
+
+    Parameters:
+    -----------
+    tdoa_df : pd.DataFrame
+        TDOA data with datetime index and height column
+    ionosonde_df : pd.DataFrame
+        Ionosonde data with datetime index and hmF2 column
+    resample_rule : str, optional
+        Resampling frequency rule (default: '5min' to match ionosonde)
+    method : str, optional
+        Interpolation method: 'linear', 'nearest', etc. (default: 'linear')
+
+    Returns:
+    --------
+    aligned_df : pd.DataFrame
+        DataFrame with columns: tdoa_height, hmF2, with aligned timestamps
+    tdoa_resampled : pd.DataFrame
+        Resampled TDOA data for validation plotting
+    """
+    # Resample TDOA data to match ionosonde frequency
+    tdoa_resampled = tdoa_df.resample(resample_rule).mean()
+
+    # Interpolate to fill gaps (optional, for smoother comparison)
+    if method == 'linear':
+        tdoa_resampled = tdoa_resampled.interpolate(method='time')
+
+    # Rename the height column to a standard name for merging
+    tdoa_resampled_renamed = tdoa_resampled.copy()
+    tdoa_resampled_renamed.columns = ['tdoa_height']
+
+    # Use merge_asof for time-tolerance matching (allows small time differences)
+    # This handles cases where timestamps don't exactly match (e.g., :00 vs :05 seconds)
+    aligned_df = pd.merge_asof(
+        tdoa_resampled_renamed.sort_index(),
+        ionosonde_df[['hmF2']].sort_index(),
+        left_index=True,
+        right_index=True,
+        direction='nearest',
+        tolerance=pd.Timedelta('3min')  # Allow up to 3 minutes difference
+    )
+
+    # Drop rows with NaN values
+    aligned_df = aligned_df.dropna()
+
+    return aligned_df, tdoa_resampled
+
+
+def plot_resampling_validation(original_df, resampled_df, label, color,
+                                 ax=None, savefig=None):
+    """
+    Plot original and resampled data to validate resampling fidelity.
+
+    Parameters:
+    -----------
+    original_df : pd.DataFrame
+        Original TDOA data with datetime index
+    resampled_df : pd.DataFrame
+        Resampled TDOA data
+    label : str
+        Label for the dataset
+    color : str
+        Color for plotting
+    ax : matplotlib.axes.Axes, optional
+        Axes to plot on. If None, creates new figure.
+    savefig : str, optional
+        Path to save figure
+
+    Returns:
+    --------
+    ax : matplotlib.axes.Axes
+        The axes object
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+    # Plot original data
+    ax.scatter(original_df.index, original_df.iloc[:, 0],
+               color=color, alpha=0.5, s=50, label=f'{label} (Original)', zorder=2)
+
+    # Plot resampled data
+    ax.plot(resampled_df.index, resampled_df.iloc[:, 0],
+            color=color, linewidth=2, linestyle='--',
+            label=f'{label} (Resampled 5min)', zorder=3)
+    ax.scatter(resampled_df.index, resampled_df.iloc[:, 0],
+               color=color, s=100, marker='x', linewidth=2, zorder=4)
+
+    ax.set_xlabel('UTC Time')
+    ax.set_ylabel('Height (km)')
+    ax.set_title(f'Resampling Validation: {label}')
+    ax.legend(loc='best')
+    ax.grid(True, alpha=0.3)
+
+    # Format x-axis
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
+
+    if savefig:
+        plt.savefig(savefig, dpi=300, bbox_inches='tight')
+        print(f"Resampling validation plot saved to: {savefig}")
+
+    return ax
+
+
+def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
+                             ax=None, marker='o', s=50, alpha=0.7,
+                             show_1to1=True, show_stats=True):
+    """
+    Create scatter plot comparing TDOA heights with ionosonde hmF2.
+
+    Parameters:
+    -----------
+    tdoa_height : pd.Series or np.array
+        TDOA-derived heights
+    ionosonde_hmf2 : pd.Series or np.array
+        Ionosonde hmF2 values
+    label : str
+        Label for the dataset
+    color : str
+        Color for the scatter points
+    ax : matplotlib.axes.Axes, optional
+        Axes to plot on. If None, creates new figure.
+    marker : str, optional
+        Marker style (default: 'o')
+    s : float, optional
+        Marker size (default: 50)
+    alpha : float, optional
+        Transparency (default: 0.7)
+    show_1to1 : bool, optional
+        Show 1:1 reference line (default: True)
+    show_stats : bool, optional
+        Show correlation statistics (default: True)
+
+    Returns:
+    --------
+    ax : matplotlib.axes.Axes
+        The axes object
+    stats : dict
+        Dictionary with correlation statistics
+    """
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+    # Create scatter plot
+    ax.scatter(ionosonde_hmf2, tdoa_height, color=color, marker=marker,
+               s=s, alpha=alpha, label=label, edgecolors='black', linewidth=0.5)
+
+    # Calculate statistics
+    valid_mask = ~np.isnan(tdoa_height) & ~np.isnan(ionosonde_hmf2)
+    tdoa_valid = np.array(tdoa_height)[valid_mask]
+    iono_valid = np.array(ionosonde_hmf2)[valid_mask]
+
+    stats = {}
+    if len(tdoa_valid) > 0:
+        correlation = np.corrcoef(iono_valid, tdoa_valid)[0, 1]
+        rmse = np.sqrt(np.mean((tdoa_valid - iono_valid)**2))
+        bias = np.mean(tdoa_valid - iono_valid)
+
+        stats = {
+            'correlation': correlation,
+            'rmse': rmse,
+            'bias': bias,
+            'n_points': len(tdoa_valid)
+        }
+
+    # Add 1:1 reference line
+    if show_1to1:
+        lims = [
+            np.min([ax.get_xlim()[0], ax.get_ylim()[0]]),
+            np.max([ax.get_xlim()[1], ax.get_ylim()[1]]),
+        ]
+        ax.plot(lims, lims, 'k--', alpha=0.5, linewidth=2, label='1:1 Line', zorder=1)
+
+    return ax, stats
+
+
+def create_scatter_plot_figure(datasets, ionosonde_df,
+                                 individual_plots=True, combined_plot=True,
+                                 output_dir=None):
+    """
+    Create scatter plots comparing multiple TDOA datasets with ionosonde hmF2.
+
+    Parameters:
+    -----------
+    datasets : list of dict
+        List of dataset dictionaries with keys:
+        - 'df': DataFrame with TDOA data
+        - 'label': Label for the dataset
+        - 'color': Color for plotting
+        - 'marker': Marker style
+    ionosonde_df : pd.DataFrame
+        Ionosonde data with hmF2 column
+    individual_plots : bool, optional
+        Create individual scatter plots for each dataset (default: True)
+    combined_plot : bool, optional
+        Create combined scatter plot with all datasets (default: True)
+    output_dir : str, optional
+        Directory to save plots. If None, displays only.
+
+    Returns:
+    --------
+    results : dict
+        Dictionary with statistics for each dataset
+    """
+    results = {}
+
+    # Create individual plots
+    if individual_plots:
+        for dataset in datasets:
+            fig, ax = plt.subplots(figsize=(8, 8))
+
+            # Align and resample data
+            aligned_df, resampled_df = align_and_resample_data(
+                dataset['df'], ionosonde_df
+            )
+
+            # Create scatter plot
+            ax, stats = plot_scatter_comparison(
+                aligned_df['tdoa_height'],
+                aligned_df['hmF2'],
+                label=dataset['label'],
+                color=dataset['color'],
+                marker=dataset.get('marker', 'o'),
+                ax=ax
+            )
+
+            # Add labels and title
+            ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold')
+            ax.set_ylabel('HF TDOA Height (km)', fontweight='bold')
+            ax.set_title(f"TDOA vs Ionosonde hmF2\n{dataset['label']}",
+                        fontweight='bold')
+            ax.legend(loc='upper left')
+            ax.grid(True, alpha=0.3)
+
+            # Set axis limits and aspect ratio
+            ax.set_xlim(200, 400)
+            ax.set_ylim(200, 400)
+            ax.set_aspect('equal')
+
+            # Add statistics text
+            if stats:
+                stats_text = (f"n = {stats['n_points']}\n"
+                             f"r = {stats['correlation']:.3f}\n"
+                             f"RMSE = {stats['rmse']:.1f} km\n"
+                             f"Bias = {stats['bias']:.1f} km")
+                ax.text(0.05, 0.95, stats_text, transform=ax.transAxes,
+                       verticalalignment='top', fontsize=12,
+                       bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+            # Save or show
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+                filename = f"scatter_{dataset['label'].replace(' ', '_').replace('/', '-')}.jpg"
+                filepath = os.path.join(output_dir, filename)
+                plt.savefig(filepath, dpi=300, bbox_inches='tight')
+                print(f"Saved: {filepath}")
+            else:
+                plt.show()
+
+            results[dataset['label']] = stats
+
+    # Create combined plot
+    if combined_plot:
+        fig, ax = plt.subplots(figsize=(10, 10))
+
+        for idx, dataset in enumerate(datasets):
+            # Align and resample data
+            aligned_df, resampled_df = align_and_resample_data(
+                dataset['df'], ionosonde_df
+            )
+
+            # Create scatter plot
+            ax, stats = plot_scatter_comparison(
+                aligned_df['tdoa_height'],
+                aligned_df['hmF2'],
+                label=dataset['label'],
+                color=dataset['color'],
+                marker=dataset.get('marker', 'o'),
+                ax=ax,
+                show_1to1=(idx == 0)  # Only show line once (first dataset)
+            )
+
+            results[dataset['label']] = stats
+
+        # Add labels and title
+        ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold')
+        ax.set_ylabel('HF TDOA Height (km)', fontweight='bold')
+        ax.set_title('HF TDOA vs Ionosonde hmF2 - All Datasets',
+                    fontweight='bold', fontsize=18)
+        ax.legend(loc='upper left', fontsize=10)
+        ax.grid(True, alpha=0.3)
+
+        # Set axis limits and aspect ratio
+        ax.set_xlim(200, 400)
+        ax.set_ylim(200, 400)
+        ax.set_aspect('equal')
+
+        # Save or show
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+            filepath = os.path.join(output_dir, 'scatter_all_datasets.jpg')
+            plt.savefig(filepath, dpi=300, bbox_inches='tight')
+            print(f"Saved: {filepath}")
+        else:
+            plt.show()
+
+    return results

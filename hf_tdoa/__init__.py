@@ -50,10 +50,17 @@ from .hf_tdoa_lib import (
     # Data loading and overlay functions
     load_ionosonde_data,
     load_tdoa_csv,
+    load_tdoa_csv_generic,
     save_tdoa_csv,
     overlay_ionosonde,
     overlay_austin_ionosonde,
     overlay_tdoa_csv,
+
+    # Scatter plot comparison functions
+    align_and_resample_data,
+    plot_resampling_validation,
+    plot_scatter_comparison,
+    create_scatter_plot_figure,
 )
 
 __all__ = [
@@ -88,8 +95,13 @@ __all__ = [
     'build_tdoa_config',
     'load_ionosonde_data',
     'load_tdoa_csv',
+    'load_tdoa_csv_generic',
     'save_tdoa_csv',
     'overlay_ionosonde',
     'overlay_austin_ionosonde',
     'overlay_tdoa_csv',
+    'align_and_resample_data',
+    'plot_resampling_validation',
+    'plot_scatter_comparison',
+    'create_scatter_plot_figure',
 ]
