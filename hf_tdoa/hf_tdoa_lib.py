@@ -2887,7 +2887,7 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
     return results
 
 
-def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, output_dir=None):
+def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, filepath=None):
     """
     Create a 2x2 figure comparing manual and automated TDOA analysis methods.
 
@@ -2903,8 +2903,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         List of automated TDOA datasets, each with 'df', 'label', 'color', and 'marker'
     ionosonde_df : pandas.DataFrame
         Ionosonde data with hmF2 column and datetime index
-    output_dir : str, optional
-        Directory to save the output figure
+    filepath : str, optional
+        Full path to save the output figure (including filename)
 
     Returns
     -------
@@ -2950,8 +2950,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Style manual scatter plot
     ax_manual_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
     ax_manual_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
-    ax_manual_scatter.set_title('(a) Manual Analysis',
-                                fontweight='bold', fontsize=16, loc='left')
+    ax_manual_scatter.set_title('(a) Manual TDOA Heights vs Austin Ionosonde hmF2',
+                                fontweight='bold', fontsize=24, loc='left')
     # ax_manual_scatter.legend(loc='upper right', fontsize='small')  # Legend removed
     ax_manual_scatter.grid(True, alpha=0.3)
     ax_manual_scatter.set_xlim(200, 350)
@@ -2961,8 +2961,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Panel (b): Manual statistics table
     ax_manual_table = fig.add_subplot(gs[0, 1])
     ax_manual_table.axis('off')
-    ax_manual_table.set_title('(b) Manual Analysis: Correlation Statistics',
-                              fontweight='bold', fontsize=16, loc='left', pad=20)
+    # ax_manual_table.set_title('(b) Manual Analysis: Correlation Statistics',
+    #                           fontweight='bold', fontsize=16, loc='left', pad=20)
 
     # Prepare manual table data
     manual_table_data = []
@@ -3064,8 +3064,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Style automated scatter plot
     ax_auto_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
     ax_auto_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
-    ax_auto_scatter.set_title('(c) Automated Analysis',
-                              fontweight='bold', fontsize=16, loc='left')
+    ax_auto_scatter.set_title('(b) Automated TDOA Heights vs Austin Ionosonde hmF2',
+                              fontweight='bold', fontsize=24, loc='left')
     # ax_auto_scatter.legend(loc='upper right', fontsize='small')  # Legend removed
     ax_auto_scatter.grid(True, alpha=0.3)
     ax_auto_scatter.set_xlim(200, 350)
@@ -3075,8 +3075,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Panel (d): Automated statistics table
     ax_auto_table = fig.add_subplot(gs[1, 1])
     ax_auto_table.axis('off')
-    ax_auto_table.set_title('(d) Automated Analysis: Correlation Statistics',
-                            fontweight='bold', fontsize=16, loc='left', pad=20)
+    # ax_auto_table.set_title('(d) Automated Analysis: Correlation Statistics',
+    #                         fontweight='bold', fontsize=16, loc='left', pad=20)
 
     # Prepare automated table data
     auto_table_data = []
@@ -3149,9 +3149,11 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         )
 
     # Save or show
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-        filepath = os.path.join(output_dir, 'scatter_manual_vs_automated.jpg')
+    if filepath:
+        # Create parent directory if it doesn't exist
+        parent_dir = os.path.dirname(filepath)
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
         plt.savefig(filepath, dpi=300, bbox_inches='tight')
         print(f"Saved: {filepath}")
     else:
