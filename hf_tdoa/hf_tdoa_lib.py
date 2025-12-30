@@ -2889,11 +2889,15 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
 
 def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, filepath=None):
     """
-    Create a 2x2 figure comparing manual and automated TDOA analysis methods.
+    Create a 2-row figure comparing manual and automated TDOA analysis methods.
 
     Layout:
-    - Row 1 (a-b): Manual analysis with scatter plot and statistics table
-    - Row 2 (c-d): Automated analysis with scatter plot and statistics table
+    - Row 1: (a) Manual analysis scatter plot with integrated statistics table
+    - Row 2: (b) Automated analysis scatter plot with integrated statistics table
+
+    Each row contains:
+    - Left: Scatter plot of TDOA heights vs ionosonde hmF2
+    - Right: Statistics table with correlation metrics (n, r, RMSE %, Bias %)
 
     Parameters
     ----------
