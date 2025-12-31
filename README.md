@@ -104,10 +104,10 @@ jupyter lab
 ├── fig_12/                      # Figure 12: Dual-band comparison
 │   ├── fig_12.ipynb
 │   └── fig_12.jpg
-├── fig_13/                      # Figure 13: Multi-mode TDOA
+├── fig_13/                      # Figure 13: Manual vs Automated Scatter
 │   ├── fig_13.ipynb
 │   └── fig_13.jpg
-├── fig_14/                      # Figure 14: Manual vs Automated Scatter
+├── fig_14/                      # Figure 14: Multi-mode TDOA
 │   ├── fig_14.ipynb
 │   └── fig_14.jpg
 ├── fig_15/                      # Figure 15: Etalon mode analysis
@@ -297,14 +297,6 @@ Multi-path propagation mode detection and analysis.
 
 #### [fig_13/fig_13.ipynb](fig_13/fig_13.ipynb)
 
-**Multi-mode TDOA analysis:**
-
-- WA5FRF→N6RFM path with multiple propagation modes
-- Processes 2F2-1F2, 1F2-1E, and 2F2-1E modes
-- Compares different ionospheric layer interactions
-
-#### [fig_14/fig_14.ipynb](fig_14/fig_14.ipynb)
-
 **Manual vs Automated TDOA Scatter Comparison:**
 
 - Compares manual and automated TDOA height measurements with Austin ionosonde hmF2
@@ -312,6 +304,14 @@ Multi-path propagation mode detection and analysis.
 - Each row includes scatter plot and statistics table with correlation metrics
 - Demonstrates agreement between manual period/autocorrelation and automated methods
 - Validates automated TDOA extraction across multiple receivers and propagation modes
+
+#### [fig_14/fig_14.ipynb](fig_14/fig_14.ipynb)
+
+**Multi-mode TDOA analysis:**
+
+- WA5FRF→N6RFM path with multiple propagation modes
+- Processes 2F2-1F2, 1F2-1E, and 2F2-1E modes
+- Compares different ionospheric layer interactions
 
 #### [fig_15/fig_15.ipynb](fig_15/fig_15.ipynb)
 
