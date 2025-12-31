@@ -15,8 +15,8 @@ The analysis uses cross-correlation techniques to detect chirp signals in WAV re
 
 This repository contains:
 
-- **14 figures** (Figures 1-13, 15) with supporting materials for manuscript publication
-- **10 Jupyter notebooks** for computational figure generation and analysis
+- **15 figures** (Figures 1-15) with supporting materials for manuscript publication
+- **11 Jupyter notebooks** for computational figure generation and analysis
 - **Complete HF TDOA analysis library** (`hf_tdoa` package) with core functionality
 - **Automated figure reproducibility testing** to verify computational results
 - **Validation notebooks** for ionosonde data quality assurance
@@ -107,6 +107,9 @@ jupyter lab
 ├── fig_13/                      # Figure 13: Multi-mode TDOA
 │   ├── fig_13.ipynb
 │   └── fig_13.jpg
+├── fig_14/                      # Figure 14: Manual vs Automated Scatter
+│   ├── fig_14.ipynb
+│   └── fig_14.jpg
 ├── fig_15/                      # Figure 15: Etalon mode analysis
 │   ├── fig_15.ipynb
 │   ├── fig_15.jpg
@@ -125,11 +128,14 @@ jupyter lab
 │   │   └── N6RFM_10Hz_per_ms_template.wav
 │   └── CSVs/                    # Ionosonde and manual TDOA data
 ├── submitted_figures/           # Baseline figures for testing
+│   ├── fig_03.jpg
+│   ├── fig_05.jpg
 │   ├── fig_08.jpg
 │   ├── fig_09.jpg
 │   ├── fig_11.jpg
 │   ├── fig_12.jpg
 │   ├── fig_13.jpg
+│   ├── fig_14.jpg
 │   └── fig_15.jpg
 └── hf_tdoa/                     # HF TDOA analysis package
     ├── __init__.py              # Package initialization
@@ -209,12 +215,20 @@ slope, intercept = path_info.calculate_TDOA_model('2F2-1F2')
 - `overlay_ionosonde()` - Add ionosonde data to plots
 - `overlay_tdoa_csv()` - Add manual TDOA measurements to plots
 
+#### Scatter Plot Comparison
+
+- `align_and_resample_data()` - Align TDOA measurements with ionosonde data
+- `plot_scatter_comparison()` - Create scatter plot comparing TDOA vs ionosonde
+- `create_scatter_plot_figure()` - Create individual and combined scatter plots
+- `create_manual_vs_automated_scatter_figure()` - Create 2x2 comparison figure
+
 ### Propagation Modes
 
-Three propagation modes are pre-configured in `MODE_CONFIGS`:
+Four propagation modes are pre-configured in `MODE_CONFIGS`:
 
 | Mode | Description | Filter Limits (Hz) | Freq Range (Hz) | Line Style |
 |------|-------------|-------------------|-----------------|------------|
+| `3F2-1F2` | 3-hop F2 minus 1-hop F2 | 10-50 | 25-50 | `-.` (dash-dot) |
 | `2F2-1F2` | 2-hop F2 minus 1-hop F2 | 10-50 | 11-20 | `--` (dashed) |
 | `1F2-1E` | 1-hop F2 minus 1-hop E | 2.5-30 | 5-12 | `-.` (dash-dot) |
 | `2F2-1E` | 2-hop F2 minus 1-hop E | 20-30 | 22-30 | `:` (dotted) |
@@ -285,9 +299,19 @@ Multi-path propagation mode detection and analysis.
 
 **Multi-mode TDOA analysis:**
 
-- WA5FRF→AB5YO path with multiple propagation modes
+- WA5FRF→N6RFM path with multiple propagation modes
 - Processes 2F2-1F2, 1F2-1E, and 2F2-1E modes
 - Compares different ionospheric layer interactions
+
+#### [fig_14/fig_14.ipynb](fig_14/fig_14.ipynb)
+
+**Manual vs Automated TDOA Scatter Comparison:**
+
+- Compares manual and automated TDOA height measurements with Austin ionosonde hmF2
+- 2x2 layout: Manual analysis (top) vs Automated analysis (bottom)
+- Each row includes scatter plot and statistics table with correlation metrics
+- Demonstrates agreement between manual period/autocorrelation and automated methods
+- Validates automated TDOA extraction across multiple receivers and propagation modes
 
 #### [fig_15/fig_15.ipynb](fig_15/fig_15.ipynb)
 

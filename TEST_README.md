@@ -7,11 +7,14 @@ The `test_figures.py` script automatically verifies that the Jupyter notebooks i
 ## What It Does
 
 1. **Executes each notebook**
+   - Runs `fig_03/fig_03.ipynb` → generates `fig_03/fig_03.jpg`
+   - Runs `fig_05/fig_05.ipynb` → generates `fig_05/fig_05.jpg`
    - Runs `fig_08/fig_08.ipynb` → generates `fig_08/fig_08.jpg`
    - Runs `fig_09/fig_09.ipynb` → generates `fig_09/fig_09.jpg`
    - Runs `fig_11/fig_11.ipynb` → generates `fig_11/fig_11.jpg`
    - Runs `fig_12/fig_12.ipynb` → generates `fig_12/fig_12.jpg`
    - Runs `fig_13/fig_13.ipynb` → generates `fig_13/fig_13.jpg`
+   - Runs `fig_14/fig_14.ipynb` → generates `fig_14/fig_14.jpg`
    - Runs `fig_15/fig_15.ipynb` → generates `fig_15/fig_15.jpg`
 
 2. **Compares generated figures**
@@ -39,7 +42,7 @@ conda install pillow scikit-image nbconvert
 
 ### Basic Usage
 
-Run all tests from the `fig_11-14` directory:
+Run all tests from the repository root directory:
 ```bash
 python test_figures.py
 ```
@@ -86,7 +89,7 @@ python test_figures.py --help
 ======================================================================
 Figure Reproducibility Test
 ======================================================================
-Notebooks directory: /path/to/fig_11-14
+Notebooks directory: /path/to/HF-TDOA-Frontiers-2025
 Baseline figures: /path/to/submitted_figures
 
 ──────────────────────────────────────────────────────────────────────
@@ -116,12 +119,12 @@ Testing: fig_12.ipynb
 ======================================================================
 Test Summary
 ======================================================================
-Notebooks tested: 3
-  Passed: 3
+Notebooks tested: 9
+  Passed: 9
   Failed: 0
 
-Figures compared: 4
-  Identical: 3
+Figures compared: 9
+  Identical: 8
   Different: 1
 ======================================================================
 
@@ -177,9 +180,9 @@ python test_figures.py --json-output results.json
 Example JSON structure:
 ```json
 {
-  "notebooks_tested": 3,
-  "notebooks_passed": 3,
-  "figures_compared": 4,
+  "notebooks_tested": 9,
+  "notebooks_passed": 9,
+  "figures_compared": 9,
   "details": {
     "fig_11.ipynb": {
       "execution": {"success": true},
@@ -188,6 +191,16 @@ Example JSON structure:
           "identical": true,
           "mae": 0.0,
           "ssim": 1.0
+        }
+      }
+    },
+    "fig_14.ipynb": {
+      "execution": {"success": true},
+      "comparisons": {
+        "fig_14.jpg": {
+          "identical": false,
+          "mae": 0.0234,
+          "ssim": 0.999234
         }
       }
     }
@@ -216,9 +229,9 @@ Long-running notebooks may need increased timeout. Edit the `ExecutePreprocessor
 If notebooks consume too much memory, run tests individually by modifying the `notebook_outputs` dictionary in `test_figures.py`:
 ```python
 self.notebook_outputs = {
-    'fig_11.ipynb': ['fig_11.jpg'],
-    # 'fig_12.ipynb': ['fig_12.jpg'],  # Commented out
-    # 'fig_13_14.ipynb': ['fig_13.jpg', 'fig_14.jpg']
+    'fig_11': {'notebook': 'fig_11.ipynb', 'figures': ['fig_11.jpg']},
+    # 'fig_12': {'notebook': 'fig_12.ipynb', 'figures': ['fig_12.jpg']},  # Commented out
+    # 'fig_14': {'notebook': 'fig_14.ipynb', 'figures': ['fig_14.jpg']}
 }
 ```
 
