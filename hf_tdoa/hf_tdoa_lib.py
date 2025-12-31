@@ -3022,7 +3022,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
         cellLoc='left',
         loc='upper left',
-        bbox=[-0.2, 0.05, 1.0, 0.9]
+        bbox=[-0.2, 0.05, 1.15, 0.9]
     )
 
     # Style manual table
@@ -3146,7 +3146,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
         cellLoc='left',
         loc='upper left',
-        bbox=[-0.2, 0.05, 1.0, 0.9]
+        bbox=[-0.2, 0.05, 1.15, 0.9]
     )
 
     # Style automated table
