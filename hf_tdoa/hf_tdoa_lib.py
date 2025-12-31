@@ -3213,3 +3213,154 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         plt.show()
 
     return results
+
+
+def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_titles=None,
+                              filepath=None, include_origin=False, show_regression=True):
+    """
+    Create a 3x3 grid of scatter plots comparing TDOA heights with ionosonde hmF2.
+
+    This function creates a comprehensive figure showing different analysis methods (rows)
+    across different propagation paths (columns).
+
+    Parameters
+    ----------
+    datasets_grid : list of list of dict
+        3x3 grid of datasets. Structure: datasets_grid[row][col] where each element is a dict with:
+        - 'df': DataFrame with TDOA data (must have 'height_km' column or similar)
+        - 'label': Label for the dataset
+        - 'color': Color for plotting
+        - 'marker': Marker style (e.g., '^', 'v', 'o')
+    ionosonde_df : pandas.DataFrame
+        Ionosonde data with hmF2 column and datetime index
+    row_labels : list of str, optional
+        Labels for each row (analysis method). Length must be 3.
+    col_titles : list of str, optional
+        Titles for each column (propagation path). Length must be 3.
+    filepath : str, optional
+        Full path to save the output figure (including filename)
+    include_origin : bool, optional
+        Include the point (0,0) in regression line and statistics calculations (default: False)
+    show_regression : bool, optional
+        Show linear regression line with formula (default: True)
+
+    Returns
+    -------
+    list of list of dict
+        3x3 grid of statistics dictionaries, matching the structure of datasets_grid
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.gridspec import GridSpec
+    import numpy as np
+
+    # Validate inputs
+    if len(datasets_grid) != 3:
+        raise ValueError(f"datasets_grid must have 3 rows, got {len(datasets_grid)}")
+    for row_idx, row in enumerate(datasets_grid):
+        if len(row) != 3:
+            raise ValueError(f"Row {row_idx} must have 3 columns, got {len(row)}")
+
+    # Default labels if not provided
+    if row_labels is None:
+        row_labels = ['Row 1', 'Row 2', 'Row 3']
+    if col_titles is None:
+        col_titles = ['Column 1', 'Column 2', 'Column 3']
+
+    # Create figure with 3x3 grid
+    fig = plt.figure(figsize=(18, 14))
+    gs = GridSpec(3, 3, figure=fig, hspace=0.35, wspace=0.25,
+                  left=0.08, right=0.98, top=0.93, bottom=0.07)
+
+    # Store results
+    results = [[None for _ in range(3)] for _ in range(3)]
+
+    # Create each subplot
+    for row_idx in range(3):
+        for col_idx in range(3):
+            ax = fig.add_subplot(gs[row_idx, col_idx])
+
+            dataset = datasets_grid[row_idx][col_idx]
+
+            # Align and resample data
+            aligned_df, resampled_df = align_and_resample_data(
+                dataset['df'], ionosonde_df
+            )
+
+            # Create scatter plot
+            ax, stats = plot_scatter_comparison(
+                aligned_df['tdoa_height'],
+                aligned_df['hmF2'],
+                label=dataset['label'],
+                color=dataset['color'],
+                marker=dataset.get('marker', 'o'),
+                edgecolor=dataset.get('edgecolor', 'black'),
+                ax=ax,
+                show_1to1=False,
+                show_stats=False,  # We'll add custom stats box
+                include_origin=include_origin,
+                show_regression=show_regression
+            )
+
+            results[row_idx][col_idx] = stats
+
+            # Add statistics box in upper left corner
+            if stats and 'n_points' in stats:
+                stats_text = (
+                    f"n = {stats['n_points']}\n"
+                    f"RMSE = {stats['rmse']:.1f} km\n"
+                    f"Bias = {stats['bias']:+.1f} km"
+                )
+                ax.text(0.05, 0.95, stats_text,
+                       transform=ax.transAxes,
+                       fontsize=10,
+                       verticalalignment='top',
+                       bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray'))
+
+            # Add column title at the top of the first row
+            if row_idx == 0:
+                ax.set_title(col_titles[col_idx], fontweight='bold', fontsize=13, pad=10)
+
+            # Add row label on the left side of the first column
+            if col_idx == 0:
+                ax.text(-0.25, 0.5, row_labels[row_idx],
+                       transform=ax.transAxes,
+                       fontsize=13,
+                       fontweight='bold',
+                       verticalalignment='center',
+                       horizontalalignment='center',
+                       rotation=90)
+
+            # Set axis labels
+            if row_idx == 2:  # Bottom row
+                ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=11)
+            else:
+                ax.set_xlabel('')
+
+            if col_idx == 0:  # Left column
+                ax.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=11)
+            else:
+                ax.set_ylabel('')
+
+            # Style
+            ax.grid(True, alpha=0.3)
+            ax.set_xlim(200, 400)
+            ax.set_ylim(200, 400)
+            ax.set_aspect('equal')
+
+            # Add regression equation as legend if available
+            if show_regression and stats and 'slope' in stats:
+                # The regression line label is already in the plot from plot_scatter_comparison
+                ax.legend(loc='lower right', fontsize=8, framealpha=0.9)
+
+    # Save or show
+    if filepath:
+        # Create parent directory if it doesn't exist
+        parent_dir = os.path.dirname(filepath)
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        print(f"Saved: {filepath}")
+    else:
+        plt.show()
+
+    return results

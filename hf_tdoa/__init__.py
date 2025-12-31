@@ -61,6 +61,7 @@ from .hf_tdoa_lib import (
     plot_scatter_comparison,
     create_scatter_plot_figure,
     create_manual_vs_automated_scatter_figure,
+    create_3x3_scatter_grid,
 )
 
 __all__ = [
@@ -104,4 +105,5 @@ __all__ = [
     'plot_scatter_comparison',
     'create_scatter_plot_figure',
     'create_manual_vs_automated_scatter_figure',
+    'create_3x3_scatter_grid',
 ]
