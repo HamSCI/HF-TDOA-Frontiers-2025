@@ -3266,13 +3266,20 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
     if col_titles is None:
         col_titles = ['Column 1', 'Column 2', 'Column 3']
 
-    # Create figure with 3x3 grid
-    fig = plt.figure(figsize=(18, 14))
-    gs = GridSpec(3, 3, figure=fig, hspace=0.35, wspace=0.25,
-                  left=0.08, right=0.98, top=0.93, bottom=0.07)
+    # Create figure with 3x3 grid - tighter layout
+    fig = plt.figure(figsize=(16, 12))
+    gs = GridSpec(3, 3, figure=fig, hspace=0.25, wspace=0.20,
+                  left=0.10, right=0.98, top=0.95, bottom=0.06)
 
     # Store results
     results = [[None for _ in range(3)] for _ in range(3)]
+
+    # Panel labels (a) through (i)
+    panel_labels = [
+        ['(a)', '(b)', '(c)'],
+        ['(d)', '(e)', '(f)'],
+        ['(g)', '(h)', '(i)']
+    ]
 
     # Create each subplot
     for row_idx in range(3):
@@ -3303,41 +3310,52 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
 
             results[row_idx][col_idx] = stats
 
-            # Add statistics box in upper left corner
+            # Add panel label in upper left corner
+            panel_label = panel_labels[row_idx][col_idx]
+            ax.text(0.02, 0.98, panel_label,
+                   transform=ax.transAxes,
+                   fontsize=12,
+                   fontweight='bold',
+                   verticalalignment='top',
+                   horizontalalignment='left')
+
+            # Add statistics box below panel label
             if stats and 'n_points' in stats:
                 stats_text = (
                     f"n = {stats['n_points']}\n"
                     f"RMSE = {stats['rmse']:.1f} km\n"
                     f"Bias = {stats['bias']:+.1f} km"
                 )
-                ax.text(0.05, 0.95, stats_text,
+                ax.text(0.02, 0.88, stats_text,
                        transform=ax.transAxes,
-                       fontsize=10,
+                       fontsize=9,
                        verticalalignment='top',
-                       bbox=dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='gray'))
+                       horizontalalignment='left',
+                       bbox=dict(boxstyle='round', facecolor='white', alpha=0.85,
+                                edgecolor='gray', pad=0.4))
 
             # Add column title at the top of the first row
             if row_idx == 0:
-                ax.set_title(col_titles[col_idx], fontweight='bold', fontsize=13, pad=10)
+                ax.set_title(col_titles[col_idx], fontweight='bold', fontsize=11, pad=8)
 
             # Add row label on the left side of the first column
             if col_idx == 0:
-                ax.text(-0.25, 0.5, row_labels[row_idx],
+                ax.text(-0.30, 0.5, row_labels[row_idx],
                        transform=ax.transAxes,
-                       fontsize=13,
+                       fontsize=11,
                        fontweight='bold',
                        verticalalignment='center',
                        horizontalalignment='center',
                        rotation=90)
 
-            # Set axis labels
+            # Set axis labels - only on outer edges
             if row_idx == 2:  # Bottom row
-                ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=11)
+                ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=10)
             else:
                 ax.set_xlabel('')
 
             if col_idx == 0:  # Left column
-                ax.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=11)
+                ax.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=10)
             else:
                 ax.set_ylabel('')
 
@@ -3347,10 +3365,13 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
             ax.set_ylim(200, 400)
             ax.set_aspect('equal')
 
+            # Adjust tick label sizes
+            ax.tick_params(axis='both', which='major', labelsize=9)
+
             # Add regression equation as legend if available
             if show_regression and stats and 'slope' in stats:
                 # The regression line label is already in the plot from plot_scatter_comparison
-                ax.legend(loc='lower right', fontsize=8, framealpha=0.9)
+                ax.legend(loc='lower right', fontsize=7, framealpha=0.95)
 
     # Save or show
     if filepath:
