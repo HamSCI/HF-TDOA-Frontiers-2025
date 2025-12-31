@@ -2590,7 +2590,8 @@ def plot_resampling_validation(original_df, resampled_df, label, color,
 
 def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
                              ax=None, marker='o', s=50, alpha=0.7,
-                             show_1to1=True, show_stats=True):
+                             show_1to1=True, show_stats=True, edgecolor='black', zorder=None,
+                             linewidths=None):
     """
     Create scatter plot comparing TDOA heights with ionosonde hmF2.
 
@@ -2616,6 +2617,12 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
         Show 1:1 reference line (default: True)
     show_stats : bool, optional
         Show correlation statistics (default: True)
+    edgecolor : str, optional
+        Edge color for the scatter points (default: 'black')
+    zorder : int, optional
+        Drawing order for the scatter points (default: None, which uses matplotlib default)
+    linewidths : float, optional
+        Line width for line-based markers like 'x', '+', etc. (default: None, uses 0.5 for edgecolors)
 
     Returns:
     --------
@@ -2628,8 +2635,26 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
         fig, ax = plt.subplots(figsize=(8, 8))
 
     # Create scatter plot
-    ax.scatter(ionosonde_hmf2, tdoa_height, color=color, marker=marker,
-               s=s, alpha=alpha, label=label, edgecolors='black', linewidth=0.5)
+    scatter_kwargs = {
+        'color': color,
+        'marker': marker,
+        's': s,
+        'alpha': alpha,
+        'label': label,
+        'edgecolors': edgecolor
+    }
+
+    # Use linewidths if specified, otherwise use linewidth
+    # Note: linewidth and linewidths are aliases in matplotlib, can't use both
+    if linewidths is not None:
+        scatter_kwargs['linewidths'] = linewidths
+    else:
+        scatter_kwargs['linewidth'] = 0.5
+
+    if zorder is not None:
+        scatter_kwargs['zorder'] = zorder
+
+    ax.scatter(ionosonde_hmf2, tdoa_height, **scatter_kwargs)
 
     # Calculate statistics
     valid_mask = ~np.isnan(tdoa_height) & ~np.isnan(ionosonde_hmf2)
@@ -2945,6 +2970,9 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
             label=dataset['label'],
             color=dataset['color'],
             marker=dataset.get('marker', 'o'),
+            edgecolor=dataset.get('edgecolor', 'black'),
+            zorder=dataset.get('zorder', None),
+            linewidths=dataset.get('linewidths', None),
             ax=ax_manual_scatter,
             show_1to1=False
         )
@@ -3027,13 +3055,17 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         row_idx = idx + 1
         y_pos = 0.9 - (row_idx + 0.5) * row_height_manual
         x_pos = -0.16  # Adjusted for shifted table (was 0.04)
+
+        # Use linewidths for line-based markers if specified
+        markeredgewidth = dataset.get('linewidths', 0.5) if dataset.get('marker') in ['x', '+', '*', '1', '2', '3', '4'] else 0.5
+
         ax_manual_table.plot(
             x_pos, y_pos,
             marker=dataset.get('marker', 'o'),
             color=dataset['color'],
             markersize=12,
-            markeredgecolor='black',
-            markeredgewidth=0.5,
+            markeredgecolor=dataset.get('edgecolor', 'black'),
+            markeredgewidth=markeredgewidth,
             linestyle='',
             transform=ax_manual_table.transAxes,
             clip_on=False
@@ -3059,6 +3091,9 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
             label=dataset['label'],
             color=dataset['color'],
             marker=dataset.get('marker', 'o'),
+            edgecolor=dataset.get('edgecolor', 'black'),
+            zorder=dataset.get('zorder', None),
+            linewidths=dataset.get('linewidths', None),
             ax=ax_auto_scatter,
             show_1to1=False
         )
@@ -3140,13 +3175,17 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         row_idx = idx + 1
         y_pos = 0.9 - (row_idx + 0.5) * row_height_auto
         x_pos = -0.16  # Adjusted for shifted table (was 0.04)
+
+        # Use linewidths for line-based markers if specified
+        markeredgewidth = dataset.get('linewidths', 0.5) if dataset.get('marker') in ['x', '+', '*', '1', '2', '3', '4'] else 0.5
+
         ax_auto_table.plot(
             x_pos, y_pos,
             marker=dataset.get('marker', 'o'),
             color=dataset['color'],
             markersize=12,
-            markeredgecolor='black',
-            markeredgewidth=0.5,
+            markeredgecolor=dataset.get('edgecolor', 'black'),
+            markeredgewidth=markeredgewidth,
             linestyle='',
             transform=ax_auto_table.transAxes,
             clip_on=False
