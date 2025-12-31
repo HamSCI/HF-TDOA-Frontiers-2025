@@ -2541,7 +2541,7 @@ def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='1min', method=
 def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
                              ax=None, marker='o', s=50, alpha=1.0,
                              show_1to1=True, show_stats=True, edgecolor='black', zorder=None,
-                             linewidths=None, include_origin=False):
+                             linewidths=None, include_origin=False, show_regression=False):
     """
     Create scatter plot comparing TDOA heights with ionosonde hmF2.
 
@@ -2575,6 +2575,8 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
         Line width for line-based markers like 'x', '+', etc. (default: None, uses 0.5 for edgecolors)
     include_origin : bool, optional
         Include the point (0,0) in regression line and statistics calculations (default: False)
+    show_regression : bool, optional
+        Show linear regression line with formula (default: False)
 
     Returns:
     --------
@@ -2631,13 +2633,19 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
         rmse_percent = (rmse / np.mean(iono_stats)) * 100
         bias_percent = (bias / np.mean(iono_stats)) * 100
 
+        # Calculate linear regression: y = mx + b
+        # Using iono_stats (x-axis) to predict tdoa_stats (y-axis)
+        slope, intercept = np.polyfit(iono_stats, tdoa_stats, 1)
+
         stats = {
             'correlation': correlation,
             'rmse': rmse,
             'bias': bias,
             'rmse_percent': rmse_percent,
             'bias_percent': bias_percent,
-            'n_points': len(tdoa_valid)  # Keep original count (without origin)
+            'n_points': len(tdoa_valid),  # Keep original count (without origin)
+            'slope': slope,
+            'intercept': intercept
         }
 
     # Add 1:1 reference line
@@ -2648,12 +2656,24 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
         ]
         ax.plot(lims, lims, 'k--', alpha=0.5, linewidth=2, label='1:1 Line', zorder=1)
 
+    # Add linear regression line if requested and stats are available
+    if show_regression and stats and 'slope' in stats:
+        lims = [
+            np.min([ax.get_xlim()[0], ax.get_ylim()[0]]),
+            np.max([ax.get_xlim()[1], ax.get_ylim()[1]]),
+        ]
+        x_reg = np.array(lims)
+        y_reg = stats['slope'] * x_reg + stats['intercept']
+        ax.plot(x_reg, y_reg, 'r-', alpha=0.7, linewidth=2,
+               label=f"y = {stats['slope']:.3f}x + {stats['intercept']:.1f}", zorder=2)
+
     return ax, stats
 
 
 def create_scatter_plot_figure(datasets, ionosonde_df,
                                  individual_plots=True, combined_plot=True,
-                                 output_dir=None, include_origin=False):
+                                 output_dir=None, include_origin=False, show_regression=False,
+                                 show_1to1=True):
     """
     Create scatter plots comparing multiple TDOA datasets with ionosonde hmF2.
 
@@ -2675,6 +2695,10 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
         Directory to save plots. If None, displays only.
     include_origin : bool, optional
         Include the point (0,0) in regression line and statistics calculations (default: False)
+    show_regression : bool, optional
+        Show linear regression line with formula (default: False)
+    show_1to1 : bool, optional
+        Show 1:1 reference line (default: True)
 
     Returns:
     --------
@@ -2701,7 +2725,9 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
                 color=dataset['color'],
                 marker=dataset.get('marker', 'o'),
                 ax=ax,
-                include_origin=include_origin
+                include_origin=include_origin,
+                show_regression=show_regression,
+                show_1to1=show_1to1
             )
 
             # Add labels and title
@@ -2762,8 +2788,9 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
                 color=dataset['color'],
                 marker=dataset.get('marker', 'o'),
                 ax=ax_scatter,
-                show_1to1=False,  # Don't show 1:1 line
-                include_origin=include_origin
+                show_1to1=show_1to1,
+                include_origin=include_origin,
+                show_regression=show_regression
             )
 
             results[dataset['label']] = stats
@@ -2876,7 +2903,7 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
     return results
 
 
-def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, filepath=None, include_origin=False):
+def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, filepath=None, include_origin=False, show_regression=False, show_1to1=False):
     """
     Create a 2-row figure comparing manual and automated TDOA analysis methods.
 
@@ -2900,6 +2927,10 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         Full path to save the output figure (including filename)
     include_origin : bool, optional
         Include the point (0,0) in regression line and statistics calculations (default: False)
+    show_regression : bool, optional
+        Show linear regression line with formula (default: False)
+    show_1to1 : bool, optional
+        Show 1:1 reference line (default: False)
 
     Returns
     -------
@@ -2943,8 +2974,9 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
             zorder=dataset.get('zorder', None),
             linewidths=dataset.get('linewidths', None),
             ax=ax_manual_scatter,
-            show_1to1=False,
-            include_origin=include_origin
+            show_1to1=show_1to1,
+            include_origin=include_origin,
+            show_regression=show_regression
         )
 
         results['manual'][dataset['label']] = stats
@@ -3068,8 +3100,9 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
             zorder=dataset.get('zorder', None),
             linewidths=dataset.get('linewidths', None),
             ax=ax_auto_scatter,
-            show_1to1=False,
-            include_origin=include_origin
+            show_1to1=show_1to1,
+            include_origin=include_origin,
+            show_regression=show_regression
         )
 
         results['automated'][dataset['label']] = stats
