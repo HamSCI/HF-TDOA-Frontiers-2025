@@ -3266,10 +3266,9 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
     if col_titles is None:
         col_titles = ['Column 1', 'Column 2', 'Column 3']
 
-    # Create figure with 3x3 grid - tighter layout with reduced column spacing
-    fig = plt.figure(figsize=(16, 12))
-    gs = GridSpec(3, 3, figure=fig, hspace=0.25, wspace=0.12,
-                  left=0.10, right=0.98, top=0.92, bottom=0.06)
+    # Create figure with 3x3 grid - use larger figsize and tight_layout for aspect='equal'
+    fig = plt.figure(figsize=(16, 18))
+    gs = GridSpec(3, 3, figure=fig)
 
     # Store results
     results = [[None for _ in range(3)] for _ in range(3)]
@@ -3327,11 +3326,11 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
 
             # Add column title at the top of the first row
             if row_idx == 0:
-                ax.set_title(col_titles[col_idx], fontweight='bold', fontsize=11, pad=14)
+                ax.set_title(col_titles[col_idx], fontweight='bold', fontsize=11, pad=18)
 
             # Add row label on the left side of the first column
             if col_idx == 0:
-                ax.text(-0.35, 0.5, row_labels[row_idx],
+                ax.text(-0.25, 0.5, row_labels[row_idx],
                        transform=ax.transAxes,
                        fontsize=11,
                        fontweight='bold',
@@ -3364,14 +3363,17 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
                 # The regression line label is already in the plot from plot_scatter_comparison
                 ax.legend(loc='lower right', fontsize=7, framealpha=0.95)
 
-    # Add panel labels AFTER all subplots are created (outside plots, similar to fig_15)
+    # Apply tight_layout to optimize spacing with aspect='equal'
+    fig.tight_layout()
+
+    # Add panel labels AFTER tight_layout (outside plots, similar to fig_15)
     panel_idx = 0
     for row_idx in range(3):
         for col_idx in range(3):
             ax = fig.axes[panel_idx]
             panel_label = panel_labels[row_idx][col_idx]
-            # Position label outside and to the left of the plot, similar to fig_15
-            ax.text(-0.12, 1.08, panel_label,
+            # Position label outside and above the plot
+            ax.text(-0.10, 1.10, panel_label,
                    transform=ax.transAxes,
                    fontsize=16,
                    fontweight='bold',
