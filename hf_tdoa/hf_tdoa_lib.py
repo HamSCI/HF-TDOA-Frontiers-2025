@@ -3267,7 +3267,7 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
         col_titles = ['Column 1', 'Column 2', 'Column 3']
 
     # Create figure with 3x3 grid - use larger figsize and tight_layout for aspect='equal'
-    fig = plt.figure(figsize=(16, 18))
+    fig = plt.figure(figsize=(16, 17))
     gs = GridSpec(3, 3, figure=fig)
 
     # Store results
@@ -3326,13 +3326,13 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
 
             # Add column title at the top of the first row
             if row_idx == 0:
-                ax.set_title(col_titles[col_idx], fontweight='bold', fontsize=11, pad=18)
+                ax.set_title(col_titles[col_idx], fontweight='bold', fontsize=16, pad=18)
 
             # Add row label on the left side of the first column
             if col_idx == 0:
                 ax.text(-0.25, 0.5, row_labels[row_idx],
                        transform=ax.transAxes,
-                       fontsize=11,
+                       fontsize=16,
                        fontweight='bold',
                        verticalalignment='center',
                        horizontalalignment='center',
@@ -3354,7 +3354,7 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
             # Add regression equation as legend if available
             if show_regression and stats and 'slope' in stats:
                 # The regression line label is already in the plot from plot_scatter_comparison
-                ax.legend(loc='lower right', fontsize=7, framealpha=0.95)
+                ax.legend(loc='upper right', fontsize=7, framealpha=0.95)
 
     # Apply tight_layout to optimize spacing with aspect='equal'
     fig.tight_layout()
