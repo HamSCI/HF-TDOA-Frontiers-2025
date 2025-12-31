@@ -2943,6 +2943,9 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     import matplotlib.pyplot as plt
     from matplotlib.gridspec import GridSpec
 
+    # Table font size configuration
+    TABLE_FONTSIZE = 14
+
     results = {'manual': {}, 'automated': {}}
 
     # Create figure with 2x2 grid
@@ -3022,11 +3025,11 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
 
     # Style manual table
     manual_table.auto_set_font_size(False)
-    manual_table.set_fontsize(11)
+    manual_table.set_fontsize(TABLE_FONTSIZE)
     manual_table.scale(1, 2.5)
 
     # Set column widths
-    col_widths = [0.08, 0.35, 0.10, 0.12, 0.15, 0.15]
+    col_widths = [0.08, 0.45, 0.10, 0.12, 0.15, 0.15]
     for row in range(len(manual_datasets) + 1):
         for col in range(6):
             cell = manual_table[(row, col)]
@@ -3036,7 +3039,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     for i in range(6):
         cell = manual_table[(0, i)]
         cell.set_facecolor('#4472C4')
-        cell.set_text_props(weight='bold', color='white')
+        cell.set_text_props(weight='bold', color='white', fontsize=TABLE_FONTSIZE + 2)
 
     # Alternate row colors
     for idx, dataset in enumerate(manual_datasets):
@@ -3143,7 +3146,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
 
     # Style automated table
     auto_table.auto_set_font_size(False)
-    auto_table.set_fontsize(11)
+    auto_table.set_fontsize(TABLE_FONTSIZE)
     auto_table.scale(1, 2.5)
 
     # Set column widths
@@ -3156,7 +3159,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     for i in range(6):
         cell = auto_table[(0, i)]
         cell.set_facecolor('#4472C4')
-        cell.set_text_props(weight='bold', color='white')
+        cell.set_text_props(weight='bold', color='white', fontsize=TABLE_FONTSIZE + 2)
 
     # Alternate row colors
     for idx, dataset in enumerate(automated_datasets):
