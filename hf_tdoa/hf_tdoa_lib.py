@@ -2541,7 +2541,7 @@ def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='1min', method=
 def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
                              ax=None, marker='o', s=50, alpha=1.0,
                              show_1to1=True, show_stats=True, edgecolor='black', zorder=None,
-                             linewidths=None):
+                             linewidths=None, include_origin=False):
     """
     Create scatter plot comparing TDOA heights with ionosonde hmF2.
 
@@ -2573,6 +2573,8 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
         Drawing order for the scatter points (default: None, which uses matplotlib default)
     linewidths : float, optional
         Line width for line-based markers like 'x', '+', etc. (default: None, uses 0.5 for edgecolors)
+    include_origin : bool, optional
+        Include the point (0,0) in regression line and statistics calculations (default: False)
 
     Returns:
     --------
@@ -2613,13 +2615,21 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
 
     stats = {}
     if len(tdoa_valid) > 0:
-        correlation = np.corrcoef(iono_valid, tdoa_valid)[0, 1]
-        rmse = np.sqrt(np.mean((tdoa_valid - iono_valid)**2))
-        bias = np.mean(tdoa_valid - iono_valid)
+        # Add origin point (0,0) to the data for statistics calculation if requested
+        if include_origin:
+            tdoa_stats = np.append(tdoa_valid, 0.0)
+            iono_stats = np.append(iono_valid, 0.0)
+        else:
+            tdoa_stats = tdoa_valid
+            iono_stats = iono_valid
+
+        correlation = np.corrcoef(iono_stats, tdoa_stats)[0, 1]
+        rmse = np.sqrt(np.mean((tdoa_stats - iono_stats)**2))
+        bias = np.mean(tdoa_stats - iono_stats)
 
         # Calculate percent errors using ionosonde as reference (accepted values)
-        rmse_percent = (rmse / np.mean(iono_valid)) * 100
-        bias_percent = (bias / np.mean(iono_valid)) * 100
+        rmse_percent = (rmse / np.mean(iono_stats)) * 100
+        bias_percent = (bias / np.mean(iono_stats)) * 100
 
         stats = {
             'correlation': correlation,
@@ -2627,7 +2637,7 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
             'bias': bias,
             'rmse_percent': rmse_percent,
             'bias_percent': bias_percent,
-            'n_points': len(tdoa_valid)
+            'n_points': len(tdoa_valid)  # Keep original count (without origin)
         }
 
     # Add 1:1 reference line
@@ -2643,7 +2653,7 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
 
 def create_scatter_plot_figure(datasets, ionosonde_df,
                                  individual_plots=True, combined_plot=True,
-                                 output_dir=None):
+                                 output_dir=None, include_origin=False):
     """
     Create scatter plots comparing multiple TDOA datasets with ionosonde hmF2.
 
@@ -2663,6 +2673,8 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
         Create combined scatter plot with all datasets (default: True)
     output_dir : str, optional
         Directory to save plots. If None, displays only.
+    include_origin : bool, optional
+        Include the point (0,0) in regression line and statistics calculations (default: False)
 
     Returns:
     --------
@@ -2688,7 +2700,8 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
                 label=dataset['label'],
                 color=dataset['color'],
                 marker=dataset.get('marker', 'o'),
-                ax=ax
+                ax=ax,
+                include_origin=include_origin
             )
 
             # Add labels and title
@@ -2749,7 +2762,8 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
                 color=dataset['color'],
                 marker=dataset.get('marker', 'o'),
                 ax=ax_scatter,
-                show_1to1=False  # Don't show 1:1 line
+                show_1to1=False,  # Don't show 1:1 line
+                include_origin=include_origin
             )
 
             results[dataset['label']] = stats
@@ -2862,7 +2876,7 @@ def create_scatter_plot_figure(datasets, ionosonde_df,
     return results
 
 
-def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, filepath=None):
+def create_manual_vs_automated_scatter_figure(manual_datasets, automated_datasets, ionosonde_df, filepath=None, include_origin=False):
     """
     Create a 2-row figure comparing manual and automated TDOA analysis methods.
 
@@ -2884,6 +2898,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         Ionosonde data with hmF2 column and datetime index
     filepath : str, optional
         Full path to save the output figure (including filename)
+    include_origin : bool, optional
+        Include the point (0,0) in regression line and statistics calculations (default: False)
 
     Returns
     -------
@@ -2927,7 +2943,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
             zorder=dataset.get('zorder', None),
             linewidths=dataset.get('linewidths', None),
             ax=ax_manual_scatter,
-            show_1to1=False
+            show_1to1=False,
+            include_origin=include_origin
         )
 
         results['manual'][dataset['label']] = stats
@@ -3051,7 +3068,8 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
             zorder=dataset.get('zorder', None),
             linewidths=dataset.get('linewidths', None),
             ax=ax_auto_scatter,
-            show_1to1=False
+            show_1to1=False,
+            include_origin=include_origin
         )
 
         results['automated'][dataset['label']] = stats
