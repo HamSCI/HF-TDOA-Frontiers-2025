@@ -3338,16 +3338,9 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
                        horizontalalignment='center',
                        rotation=90)
 
-            # Set axis labels - only on outer edges
-            if row_idx == 2:  # Bottom row
-                ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=10)
-            else:
-                ax.set_xlabel('')
-
-            if col_idx == 0:  # Left column
-                ax.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=10)
-            else:
-                ax.set_ylabel('')
+            # Set axis labels on all panels
+            ax.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=10)
+            ax.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=10)
 
             # Style
             ax.grid(True, alpha=0.3)
