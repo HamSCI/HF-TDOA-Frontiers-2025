@@ -2985,8 +2985,10 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Style manual scatter plot
     ax_manual_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
     ax_manual_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
-    ax_manual_scatter.set_title('(a) Manual TDOA Heights vs Austin Ionosonde hmF2',
-                                fontweight='bold', fontsize=24, loc='left')
+    # Use text instead of set_title for better positioning control
+    ax_manual_scatter.text(-0.15, 1.05, '(a) Manual TDOA Heights vs Austin Ionosonde hmF2',
+                          transform=ax_manual_scatter.transAxes,
+                          fontweight='bold', fontsize=24, va='bottom', ha='left')
     # ax_manual_scatter.legend(loc='upper right', fontsize='small')  # Legend removed
     ax_manual_scatter.grid(True, alpha=0.3)
     ax_manual_scatter.set_xlim(200, 350)
@@ -3020,7 +3022,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
         cellLoc='left',
         loc='upper left',
-        bbox=[-0.2, 0, 1.0, 0.9]
+        bbox=[-0.2, 0.05, 1.0, 0.9]
     )
 
     # Style manual table
@@ -3054,9 +3056,10 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Add symbols to manual table
     num_rows_manual = len(manual_datasets) + 1
     row_height_manual = 0.9 / num_rows_manual
+    table_bottom = 0.05  # Match the bbox bottom position
     for idx, dataset in enumerate(manual_datasets):
         row_idx = idx + 1
-        y_pos = 0.9 - (row_idx + 0.5) * row_height_manual
+        y_pos = (table_bottom + 0.9) - (row_idx + 0.5) * row_height_manual
         x_pos = -0.16  # Adjusted for shifted table (was 0.04)
 
         # Use linewidths for line-based markers if specified
@@ -3106,8 +3109,10 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Style automated scatter plot
     ax_auto_scatter.set_xlabel('Austin Ionosonde hmF2 (km)', fontweight='bold', fontsize=14)
     ax_auto_scatter.set_ylabel('HF TDOA Height (km)', fontweight='bold', fontsize=14)
-    ax_auto_scatter.set_title('(b) Automated TDOA Heights vs Austin Ionosonde hmF2',
-                              fontweight='bold', fontsize=24, loc='left')
+    # Use text instead of set_title for better positioning control
+    ax_auto_scatter.text(-0.15, 1.05, '(b) Automated TDOA Heights vs Austin Ionosonde hmF2',
+                        transform=ax_auto_scatter.transAxes,
+                        fontweight='bold', fontsize=24, va='bottom', ha='left')
     # ax_auto_scatter.legend(loc='upper right', fontsize='small')  # Legend removed
     ax_auto_scatter.grid(True, alpha=0.3)
     ax_auto_scatter.set_xlim(200, 350)
@@ -3141,7 +3146,7 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
         colLabels=['', 'Dataset', 'n', 'r', 'RMSE (%)', 'Bias (%)'],
         cellLoc='left',
         loc='upper left',
-        bbox=[-0.2, 0, 1.0, 0.9]
+        bbox=[-0.2, 0.05, 1.0, 0.9]
     )
 
     # Style automated table
@@ -3174,9 +3179,10 @@ def create_manual_vs_automated_scatter_figure(manual_datasets, automated_dataset
     # Add symbols to automated table
     num_rows_auto = len(automated_datasets) + 1
     row_height_auto = 0.9 / num_rows_auto
+    table_bottom = 0.05  # Match the bbox bottom position
     for idx, dataset in enumerate(automated_datasets):
         row_idx = idx + 1
-        y_pos = 0.9 - (row_idx + 0.5) * row_height_auto
+        y_pos = (table_bottom + 0.9) - (row_idx + 0.5) * row_height_auto
         x_pos = -0.16  # Adjusted for shifted table (was 0.04)
 
         # Use linewidths for line-based markers if specified
