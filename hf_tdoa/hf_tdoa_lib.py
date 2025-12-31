@@ -2589,7 +2589,7 @@ def plot_resampling_validation(original_df, resampled_df, label, color,
 
 
 def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
-                             ax=None, marker='o', s=50, alpha=0.7,
+                             ax=None, marker='o', s=50, alpha=1.0,
                              show_1to1=True, show_stats=True, edgecolor='black', zorder=None,
                              linewidths=None):
     """
