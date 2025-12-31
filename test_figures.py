@@ -55,6 +55,7 @@ class NotebookFigureTester:
             'fig_11': {'notebook': 'fig_11.ipynb', 'figures': ['fig_11.jpg']},
             'fig_12': {'notebook': 'fig_12.ipynb', 'figures': ['fig_12.jpg']},
             'fig_13': {'notebook': 'fig_13.ipynb', 'figures': ['fig_13.jpg']},
+            'fig_14': {'notebook': 'fig_14.ipynb', 'figures': ['fig_14.jpg']},
             'fig_15': {'notebook': 'fig_15.ipynb', 'figures': ['fig_15.jpg']}
         }
 
