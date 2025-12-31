@@ -63,6 +63,12 @@ Visualization:
   - plot_hmf2_subplot() : Multi-panel plots for multiple datasets
   - plot_tdoa_hmf2_subplot() : Combined TDOA and layer height plots
 
+Scatter Plot Comparison:
+  - align_and_resample_data() : Align TDOA measurements with ionosonde data
+  - plot_scatter_comparison() : Create scatter plot comparing TDOA vs ionosonde
+  - create_scatter_plot_figure() : Create individual and combined scatter plots
+  - create_manual_vs_automated_scatter_figure() : Create 2x2 comparison figure
+
 For detailed function documentation, see individual function docstrings.
 
 Physical Constants
@@ -94,7 +100,7 @@ from tqdm import tqdm
 # Each mode includes filter limits, search limits, and plotting parameters
 MODE_CONFIGS = {
     '3F2-1F2': {
-        'filter_limts': [10, 50],               # Bandpass filter limits [Hz]
+        'filter_limits': [10, 50],              # Bandpass filter limits [Hz]
         'search_limits': [-0.1, 0.1, 25, 50],   # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': '-.',
         'linewidth': 3,
@@ -102,7 +108,7 @@ MODE_CONFIGS = {
         'marker': 'v'
     },
     '2F2-1F2': {
-        'filter_limts': [10, 50],               # Bandpass filter limits [Hz]
+        'filter_limits': [10, 50],              # Bandpass filter limits [Hz]
         'search_limits': [-0.1, 0.1, 11, 20],   # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': '--',
         'linewidth': 3,
@@ -110,7 +116,7 @@ MODE_CONFIGS = {
         'marker': 'o'
     },
     '1F2-1E': {
-        'filter_limts': [2.5, 30],              # Bandpass filter limits [Hz]
+        'filter_limits': [2.5, 30],             # Bandpass filter limits [Hz]
         'search_limits': [-0.1, 0.1, 5, 12],    # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': '-.',
         'linewidth': 1.5,
@@ -118,7 +124,7 @@ MODE_CONFIGS = {
         'marker': '*'
     },
     '2F2-1E': {
-        'filter_limts': [20, 30],               # Bandpass filter limits [Hz]
+        'filter_limits': [20, 30],              # Bandpass filter limits [Hz]
         'search_limits': [-0.1, 0.1, 22, 30],   # (start_offset, end_offset, min_freq, max_freq)
         'linestyle': ':',
         'linewidth': 2.5,
@@ -1275,7 +1281,7 @@ def find_chirps(wavlist, template, sweep_rate, pfx=None, plot_correlation=False)
     return chirps
 
 
-def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
+def find_TDOAs(wav_data, search_limits=None, filter_limits=None,
                mode_string='2F2-1F2', set_name=None, plot_fft=False, plot_only_one=True, save_fft_dir=None, **overrides):
     """
     Finds TDOAs in a set of WAV files given chirp start locations.
@@ -1302,7 +1308,7 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
             Minimum frequency for FFT peak search.
         max_freq : float
             Maximum frequency for FFT peak search.
-    filter_limts : tuple, optional
+    filter_limits : tuple, optional
         Frequency limits for bandpass filtering (low_pass_freq, high_pass_freq).
         If None, uses the default for the specified mode_string.
     mode_string : str, optional
@@ -1338,8 +1344,8 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     # Use provided parameters or fall back to config defaults
     if search_limits is None:
         search_limits = config['search_limits']
-    if filter_limts is None:
-        filter_limts = config['filter_limts']
+    if filter_limits is None:
+        filter_limits = config['filter_limits']
     if set_name is None:
         set_name = mode_string
     sweep_rate = wav_data.attrs['sweep_rate'] # Sweep rate in Hz/ms
@@ -1352,7 +1358,7 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
     print(f"\n{'='*70}")
     print(f"Processing Mode: {mode_string}")
     print(f"{'='*70}")
-    print(f"  Filter Limits:  {filter_limts[0]:.1f} - {filter_limts[1]:.1f} Hz")
+    print(f"  Filter Limits:  {filter_limits[0]:.1f} - {filter_limits[1]:.1f} Hz")
     print(f"  Search Window:  {search_limits[0]:.2f} to {search_limits[1]:.2f} s offset")
     print(f"  Freq Range:     {search_limits[2]:.1f} - {search_limits[3]:.1f} Hz")
     print(f"  Set Name:       {set_name}")
@@ -1373,7 +1379,7 @@ def find_TDOAs(wav_data, search_limits=None, filter_limts=None,
         wav_df = row['data']
         fpath  = row['file']  # Now correctly has unique filename per row
         bname  = os.path.basename(fpath)
-        wav_env, wav_fs = filter(wav_df, filter_limts[1], filter_limts[0])
+        wav_env, wav_fs = filter(wav_df, filter_limits[1], filter_limits[0])
 
         for chirp_idx, peak in enumerate(row['x']):
             peak = peak/wav_fs
@@ -2494,8 +2500,8 @@ def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='1min', method=
     aligned_df : pd.DataFrame
         DataFrame with columns: tdoa_height, hmF2, with aligned timestamps
         Contains exactly one row per original TDOA measurement
-    tdoa_resampled : pd.DataFrame
-        Copy of original TDOA data (for validation plotting)
+    tdoa_df : pd.DataFrame
+        Copy of original TDOA data
     """
     # Resample ionosonde data to fine resolution (1 minute) and interpolate
     ionosonde_resampled = ionosonde_df[['hmF2']].resample(resample_rule).mean()
@@ -2528,64 +2534,8 @@ def align_and_resample_data(tdoa_df, ionosonde_df, resample_rule='1min', method=
     # Drop rows with NaN values (shouldn't be any with good ionosonde coverage)
     aligned_df = aligned_df.dropna()
 
-    # Return original TDOA data for validation plotting
+    # Return aligned data and original TDOA data
     return aligned_df, tdoa_df
-
-
-def plot_resampling_validation(original_df, resampled_df, label, color,
-                                 ax=None, savefig=None):
-    """
-    Plot original and resampled data to validate resampling fidelity.
-
-    Parameters:
-    -----------
-    original_df : pd.DataFrame
-        Original TDOA data with datetime index
-    resampled_df : pd.DataFrame
-        Resampled TDOA data
-    label : str
-        Label for the dataset
-    color : str
-        Color for plotting
-    ax : matplotlib.axes.Axes, optional
-        Axes to plot on. If None, creates new figure.
-    savefig : str, optional
-        Path to save figure
-
-    Returns:
-    --------
-    ax : matplotlib.axes.Axes
-        The axes object
-    """
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-    # Plot original data
-    ax.scatter(original_df.index, original_df.iloc[:, 0],
-               color=color, alpha=0.5, s=50, label=f'{label} (Original)', zorder=2)
-
-    # Plot resampled data
-    ax.plot(resampled_df.index, resampled_df.iloc[:, 0],
-            color=color, linewidth=2, linestyle='--',
-            label=f'{label} (Resampled 5min)', zorder=3)
-    ax.scatter(resampled_df.index, resampled_df.iloc[:, 0],
-               color=color, s=100, marker='x', linewidth=2, zorder=4)
-
-    ax.set_xlabel('UTC Time')
-    ax.set_ylabel('Height (km)')
-    ax.set_title(f'Resampling Validation: {label}')
-    ax.legend(loc='best')
-    ax.grid(True, alpha=0.3)
-
-    # Format x-axis
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha='right')
-
-    if savefig:
-        plt.savefig(savefig, dpi=300, bbox_inches='tight')
-        print(f"Resampling validation plot saved to: {savefig}")
-
-    return ax
 
 
 def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
@@ -2612,7 +2562,7 @@ def plot_scatter_comparison(tdoa_height, ionosonde_hmf2, label, color,
     s : float, optional
         Marker size (default: 50)
     alpha : float, optional
-        Transparency (default: 0.7)
+        Transparency (default: 1.0)
     show_1to1 : bool, optional
         Show 1:1 reference line (default: True)
     show_stats : bool, optional

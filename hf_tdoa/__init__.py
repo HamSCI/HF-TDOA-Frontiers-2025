@@ -58,7 +58,6 @@ from .hf_tdoa_lib import (
 
     # Scatter plot comparison functions
     align_and_resample_data,
-    plot_resampling_validation,
     plot_scatter_comparison,
     create_scatter_plot_figure,
     create_manual_vs_automated_scatter_figure,
@@ -102,7 +101,6 @@ __all__ = [
     'overlay_austin_ionosonde',
     'overlay_tdoa_csv',
     'align_and_resample_data',
-    'plot_resampling_validation',
     'plot_scatter_comparison',
     'create_scatter_plot_figure',
     'create_manual_vs_automated_scatter_figure',
