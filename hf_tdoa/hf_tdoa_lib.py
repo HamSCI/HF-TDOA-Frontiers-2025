@@ -3313,6 +3313,7 @@ def create_3x3_scatter_grid(datasets_grid, ionosonde_df, row_labels=None, col_ti
             if stats and 'n_points' in stats:
                 stats_text = (
                     f"n = {stats['n_points']}\n"
+                    f"r = {stats['correlation']:.3f}\n"
                     f"RMSE = {stats['rmse']:.1f} km\n"
                     f"Bias = {stats['bias']:+.1f} km"
                 )
