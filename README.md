@@ -1,9 +1,16 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17326808.svg)](https://doi.org/10.5281/zenodo.17326808)
 
 # HF-TDOA-Frontiers-2025
-Data and software repository to support
 
-Cerwin, Stephen A., Jesse T. McMahan, Alexandros S. Papadopoulos, Gerard N. Piccini, Nathaniel A. Frissell, Kristina V. Collins, Aidain Montare, Paul Bilberry, Samuel Blackshear, and David R. Themens (2025). "HamSCI HF Multipath Propagation Mode Analysis Using Amateur Radios and Audio Waveforms Sensitive to Time Difference of Arrival." submitted to _Frontiers in Astronomy and Space Sciences - Space Physics_.
+Data and software repository to support:
+
+**Cerwin, Stephen A., Jesse T. McMahan, Alexandros S. Papadopoulos, Gerard N. Piccini, Nathaniel A. Frissell, Kristina V. Collins, Aidain Montare, Paul Bilberry, Samuel Blackshear, and David R. Themens (2025). "HamSCI HF Multipath Propagation Mode Analysis Using Amateur Radios and Audio Waveforms Sensitive to Time Difference of Arrival." submitted to _Frontiers in Astronomy and Space Sciences - Space Physics_.**
+
+**Archive Information:**
+- **Zenodo DOI:** [10.5281/zenodo.17326808](https://doi.org/10.5281/zenodo.17326808)
+- **GitHub Repository:** [https://github.com/HamSCI/HF-TDOA-Frontiers-2025](https://github.com/HamSCI/HF-TDOA-Frontiers-2025)
+- **Archive Date:** January 2026
+- **Software Version:** 1.0.0
 
 # HF TDOA Analysis - Complete Manuscript Figures
 
@@ -505,4 +512,32 @@ NAF acknowledges the support of NASA grants 80NSSC23K1322 and 80NSSC25K7026, NSF
 
 ## Acknowledgments
 
-We are grateful to the amateur radio community who voluntarily produced the HF radio observations used in this paper. Beat note analyses were developed by the University of Scranton Fall 2024 Digital Signal Processing (DSP) class led by Alexander Papadopoulos, Gerard Piccini, and Nathaniel Frissell and by correlation techniques developed by Tom McMahan. Claude.ai and ChatGPT large language models (LLMs) were used to assist in the implementation, refactoring, and documentation of python analysis code. LLMs were not used in the development of the methodology or scientific conjectures in this project, or the writing of this manuscript. Data and software for this paper are available from \url{https://doi.org/10.5281/zenodo.17326808}. Austin, TX ionosonde data was accessed through the University of Massachusetts Lowell Global Ionosphere Radio Observatory (GIRO) at https://giro.uml.edu/.
+We are grateful to the amateur radio community who voluntarily produced the HF radio observations used in this paper. Beat note analyses were developed by the University of Scranton Fall 2024 Digital Signal Processing (DSP) class led by Alexander Papadopoulos, Gerard Piccini, and Nathaniel Frissell and by correlation techniques developed by Tom McMahan. Claude.ai and ChatGPT large language models (LLMs) were used to assist in the implementation, refactoring, and documentation of python analysis code. LLMs were not used in the development of the methodology or scientific conjectures in this project, or the writing of this manuscript. Data and software for this paper are available from <https://doi.org/10.5281/zenodo.17326808>. Austin, TX ionosonde data was accessed through the University of Massachusetts Lowell Global Ionosphere Radio Observatory (GIRO) at <https://giro.uml.edu/>.
+
+## Citation
+
+If you use this software or data in your research, please cite:
+
+```bibtex
+@software{cerwin2025hftdoa,
+  author = {Cerwin, Stephen A. and McMahan, Jesse T. and Papadopoulos, Alexandros S. and Piccini, Gerard N. and Frissell, Nathaniel A. and Collins, Kristina V. and Montare, Aidain and Bilberry, Paul and Blackshear, Samuel and Themens, David R.},
+  title = {HF-TDOA-Frontiers-2025: HF TDOA Analysis Software},
+  year = {2025},
+  publisher = {Zenodo},
+  version = {1.0.0},
+  doi = {10.5281/zenodo.17326808},
+  url = {https://doi.org/10.5281/zenodo.17326808}
+}
+```
+
+And the associated paper:
+
+```bibtex
+@article{cerwin2025hamsci,
+  author = {Cerwin, Stephen A. and McMahan, Jesse T. and Papadopoulos, Alexandros S. and Piccini, Gerard N. and Frissell, Nathaniel A. and Collins, Kristina V. and Montare, Aidain and Bilberry, Paul and Blackshear, Samuel and Themens, David R.},
+  title = {HamSCI HF Multipath Propagation Mode Analysis Using Amateur Radios and Audio Waveforms Sensitive to Time Difference of Arrival},
+  journal = {Frontiers in Astronomy and Space Sciences - Space Physics},
+  year = {2025},
+  note = {submitted}
+}
+```

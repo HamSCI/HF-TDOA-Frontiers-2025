@@ -1,0 +1,74 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "HF-TDOA-Frontiers-2025: HF TDOA Analysis Software"
+version: 1.0.0
+doi: 10.5281/zenodo.17326808
+date-released: 2025-01-01
+url: "https://github.com/HamSCI/HF-TDOA-Frontiers-2025"
+repository-code: "https://github.com/HamSCI/HF-TDOA-Frontiers-2025"
+license: GPL-3.0
+authors:
+  - family-names: Cerwin
+    given-names: Stephen A.
+  - family-names: McMahan
+    given-names: Jesse T.
+  - family-names: Papadopoulos
+    given-names: Alexandros S.
+  - family-names: Piccini
+    given-names: Gerard N.
+  - family-names: Frissell
+    given-names: Nathaniel A.
+    email: nathaniel.frissell@scranton.edu
+  - family-names: Collins
+    given-names: Kristina V.
+  - family-names: Montare
+    given-names: Aidain
+  - family-names: Bilberry
+    given-names: Paul
+  - family-names: Blackshear
+    given-names: Samuel
+  - family-names: Themens
+    given-names: David R.
+keywords:
+  - HF radio
+  - TDOA
+  - ionosphere
+  - amateur radio
+  - HamSCI
+  - chirp sounder
+  - propagation modes
+abstract: >-
+  This repository contains Jupyter notebooks, Python libraries, and supporting materials
+  for generating all figures in the Frontiers manuscript on HF Time Difference of Arrival
+  (TDOA) measurements from chirp sounder data. The analysis uses cross-correlation techniques
+  to detect chirp signals in WAV recordings and extract TDOA measurements between different
+  ionospheric propagation modes. These TDOAs are then converted to ionospheric layer heights
+  using a spherical Earth virtual height model and compared with ionosonde measurements.
+references:
+  - type: article
+    authors:
+      - family-names: Cerwin
+        given-names: Stephen A.
+      - family-names: McMahan
+        given-names: Jesse T.
+      - family-names: Papadopoulos
+        given-names: Alexandros S.
+      - family-names: Piccini
+        given-names: Gerard N.
+      - family-names: Frissell
+        given-names: Nathaniel A.
+      - family-names: Collins
+        given-names: Kristina V.
+      - family-names: Montare
+        given-names: Aidain
+      - family-names: Bilberry
+        given-names: Paul
+      - family-names: Blackshear
+        given-names: Samuel
+      - family-names: Themens
+        given-names: David R.
+    title: "HamSCI HF Multipath Propagation Mode Analysis Using Amateur Radios and Audio Waveforms Sensitive to Time Difference of Arrival"
+    journal: "Frontiers in Astronomy and Space Sciences - Space Physics"
+    year: 2025
+    status: submitted
