@@ -493,8 +493,16 @@ For details on the HF TDOA method and physical model, see the associated Frontie
 
 ## Contact
 
-For questions about the analysis code or data, please refer to the Frontiers manuscript authors.
+For questions about the analysis code or data, please contact Nathaniel Frissell at nathaniel.frissell@scranton.edu.
 
 ## License
 
-See the main repository for license information.
+Software in this repository is released under the GNU General Public License version 3.
+
+## Funding
+
+NAF acknowledges the support of NASA grants 80NSSC23K1322 and 80NSSC25K7026, NSF grants AGS-2230345 and AGS-2045755, and grants from Amateur Radio Digital Communications (ARDC). DRT contributions to this study are supported through US Office of Naval Research PRISM Grant N00014-23-S-B001. KC contributions are supported through the National Science Foundation NSF AGS-2432824.
+
+## Acknowledgments
+
+We are grateful to the amateur radio community who voluntarily produced the HF radio observations used in this paper. Beat note analyses were developed by the University of Scranton Fall 2024 Digital Signal Processing (DSP) class led by Alexander Papadopoulos, Gerard Piccini, and Nathaniel Frissell and by correlation techniques developed by Tom McMahan. Claude.ai and ChatGPT large language models (LLMs) were used to assist in the implementation, refactoring, and documentation of python analysis code. LLMs were not used in the development of the methodology or scientific conjectures in this project, or the writing of this manuscript. Data and software for this paper are available from \url{https://doi.org/10.5281/zenodo.17326808}. Austin, TX ionosonde data was accessed through the University of Massachusetts Lowell Global Ionosphere Radio Observatory (GIRO) at https://giro.uml.edu/.
