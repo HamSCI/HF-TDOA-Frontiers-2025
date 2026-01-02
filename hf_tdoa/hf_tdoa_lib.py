@@ -388,8 +388,8 @@ class PathInfo:
         """Convert band (in meters) to frequency string."""
         band_dct = {
             80: '3.5 MHz',
-            60: '5 MHz',
-            40: '7 MHz',
+            60: '5.3 MHz',
+            40: '7.2 MHz',
             20: '14 MHz',
             15: '21 MHz',
             10: '28 MHz'

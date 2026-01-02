@@ -7,7 +7,7 @@
 # TX Grid Square: EL09nn
 # RX: AB5YO
 # RX Grid Square: EL09mn
-# Frequency: 5 MHz
+# Frequency: 5.3 MHz
 # Sweep Rate: 10 Hz/ms
 #
 utc,tdoa_ms,tdoa_hgt_km
