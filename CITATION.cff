@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
 title: "HF-TDOA-Frontiers-2025: HF TDOA Analysis Software"
-version: 1.0.0
+version: 1.0.1
 doi: 10.5281/zenodo.17326808
 date-released: 2025-01-01
 url: "https://github.com/HamSCI/HF-TDOA-Frontiers-2025"

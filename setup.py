@@ -19,7 +19,7 @@ else:
 
 setup(
     name="hf_tdoa",
-    version="1.0.0",
+    version="1.0.1",
     description="HF TDOA Analysis Library for Ionospheric Studies",
     long_description=long_description,
     long_description_content_type="text/markdown",

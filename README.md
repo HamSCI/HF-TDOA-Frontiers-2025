@@ -10,7 +10,7 @@ Data and software repository to support:
 - **Zenodo DOI:** [10.5281/zenodo.17326808](https://doi.org/10.5281/zenodo.17326808)
 - **GitHub Repository:** [https://github.com/HamSCI/HF-TDOA-Frontiers-2025](https://github.com/HamSCI/HF-TDOA-Frontiers-2025)
 - **Archive Date:** January 2026
-- **Software Version:** 1.0.0
+- **Software Version:** 1.0.1
 
 # HF TDOA Analysis - Complete Manuscript Figures
 
@@ -286,7 +286,7 @@ Multi-path propagation mode detection and analysis.
 
 #### [fig_11/fig_11.ipynb](fig_11/fig_11.ipynb)
 
-**TDOA analysis for WA5FRF→N5DUP 40m path:**
+**TDOA analysis for WA5FRF→N5DUP 7.2 MHz path:**
 
 - Chirp detection via cross-correlation
 - TDOA extraction for 2F2-1F2 mode
@@ -296,7 +296,7 @@ Multi-path propagation mode detection and analysis.
 
 #### [fig_12/fig_12.ipynb](fig_12/fig_12.ipynb)
 
-**Dual-band comparison (40m and 60m):**
+**Dual-band comparison (7.2 MHz and 5.3 MHz):**
 
 - Two-panel subplot comparing different frequency bands
 - WA5FRF→AB5YO path analysis
@@ -304,13 +304,14 @@ Multi-path propagation mode detection and analysis.
 
 #### [fig_13/fig_13.ipynb](fig_13/fig_13.ipynb)
 
-**Manual vs Automated TDOA Scatter Comparison:**
+**Comprehensive TDOA Method Comparison:**
 
-- Compares manual and automated TDOA height measurements with Austin ionosonde hmF2
-- 2x2 layout: Manual analysis (top) vs Automated analysis (bottom)
-- Each row includes scatter plot and statistics table with correlation metrics
-- Demonstrates agreement between manual period/autocorrelation and automated methods
-- Validates automated TDOA extraction across multiple receivers and propagation modes
+- 3x3 grid comparing three analysis methods across three propagation paths
+- **Rows:** Beat Note Period Analysis, Autocorrelation Analysis, Beat Note Automated FFT Analysis
+- **Columns:** NVIS AB5YO 7.2 MHz, NVIS AB5YO 5.3 MHz, 317 km N5DUP 7.2 MHz
+- Each subplot shows scatter plot with regression line and statistics (n, r, RMSE, Bias)
+- Demonstrates agreement between manual and automated methods
+- Validates TDOA technique across different frequencies and propagation distances
 
 #### [fig_14/fig_14.ipynb](fig_14/fig_14.ipynb)
 
@@ -524,7 +525,7 @@ If you use this software or data in your research, please cite:
   title = {HF-TDOA-Frontiers-2025: HF TDOA Analysis Software},
   year = {2025},
   publisher = {Zenodo},
-  version = {1.0.0},
+  version = {1.0.1},
   doi = {10.5281/zenodo.17326808},
   url = {https://doi.org/10.5281/zenodo.17326808}
 }
