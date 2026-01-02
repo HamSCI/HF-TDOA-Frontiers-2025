@@ -2050,7 +2050,7 @@ def plot_hmf2(chirps, tdoa_dct, ylim=(75,450), xlim=None,
             - csv_path_period: Path to manual period analysis CSV file (optional)
             - csv_path_autocorr: Path to manual autocorrelation analysis CSV file (optional)
             - label_period: Label for period analysis (default: 'Manual Period Analysis')
-            - label_autocorr: Label for autocorrelation (default: 'Manual Autocorrelation Analysis')
+            - label_autocorr: Label for autocorrelation (default: 'Autocorrelation Analysis')
             - color_period: Color for period line (default: 'tab:blue')
             - linestyle_period: Linestyle for period (default: 'dotted')
             - color_autocorr: Color for autocorr line (default: 'tab:orange')
@@ -2420,7 +2420,7 @@ def overlay_austin_ionosonde(ax, csv_path='data/CSVs/2024-04-08_AU930_AustinTX_I
 
 def overlay_tdoa_csv(ax, csv_path_period=None, csv_path_autocorr=None,
                      label_period='Manual Period Analysis',
-                     label_autocorr='Manual Autocorrelation Analysis',
+                     label_autocorr='Autocorrelation Analysis',
                      color_period='tab:blue', linestyle_period='dotted',
                      color_autocorr='tab:orange', linestyle_autocorr='dashdot'):
     """
@@ -2440,7 +2440,7 @@ def overlay_tdoa_csv(ax, csv_path_period=None, csv_path_autocorr=None,
     label_period : str, optional
         Label for period analysis data. Default is 'Manual Period Analysis'.
     label_autocorr : str, optional
-        Label for autocorrelation analysis data. Default is 'Manual Autocorrelation Analysis'.
+        Label for autocorrelation analysis data. Default is 'Autocorrelation Analysis'.
     color_period : str, optional
         Color for period analysis line. Default is 'tab:blue'.
     linestyle_period : str, optional
